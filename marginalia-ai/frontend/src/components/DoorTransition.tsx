@@ -42,10 +42,9 @@ export default function DoorTransition({
 
       {/* Central expanding light core */}
       <div 
-        className={`relative z-10 rounded-full bg-[#f3efe0] mix-blend-screen transition-all duration-1000 ease-in
-          ${phase === 1 ? 'w-4 h-4 opacity-100 shadow-[0_0_100px_40px_#d4af37]' : ''}
-          ${phase >= 2 ? 'w-[200vw] h-[200vw] opacity-100 shadow-none' : ''}
-          ${phase === 0 ? 'w-0 h-0 opacity-0' : ''}
+        className={`relative z-10 rounded-full bg-[#f3efe0] mix-blend-screen transition-all duration-1000 ease-in w-0 h-0 opacity-0
+          ${phase === 1 ? '!w-4 !h-4 !opacity-100 shadow-[0_0_100px_40px_#d4af37]' : ''}
+          ${phase >= 2 ? '!w-[200vw] !h-[200vw] !opacity-100 shadow-none' : ''}
         `}
       />
 
