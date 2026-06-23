@@ -75,3 +75,10 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+# --- Chat Schemas ---
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    reply: str
