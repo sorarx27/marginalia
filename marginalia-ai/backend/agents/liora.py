@@ -4,7 +4,9 @@ from dashscope import Generation
 from sqlalchemy.orm import Session
 import crud
 
-# Make sure to set DASHSCOPE_API_KEY in the environment or .env file
+dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
+if os.getenv("DASHSCOPE_BASE_URL"):
+    dashscope.base_http_api_url = os.getenv("DASHSCOPE_BASE_URL")
 
 LIORA_SYSTEM_PROMPT = """
 You are Liora, an emotionally intelligent, multilingual AI reading companion.
