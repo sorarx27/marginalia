@@ -1,16 +1,81 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import LivingBook from "@/components/LivingBook";
 import WhisperMessage from "@/components/WhisperMessage";
 
+interface Message {
+  id: string;
+  role: 'user' | 'liora';
+  text: string;
+}
+
 export default function LibraryDashboard() {
   const [mounted, setMounted] = useState(false);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([
+    { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you. I've been organizing the shelves and setting aside a few titles I thought you might enjoy based on our last conversation." },
+    { id: '2', role: 'liora', text: "Are you in the mood for something comforting and familiar today, or perhaps an adventure into something completely new?" }
+  ]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userText = input.trim();
+    const newMessage: Message = { id: Date.now().toString(), role: 'user', text: userText };
+    setMessages((prev) => [...prev, newMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/users/1/chat/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText }),
+      });
+      
+      if (!response.ok) {
+        // Try creating the user if they don't exist
+        if (response.status === 404) {
+             await fetch('/api/users/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: "Guest Reader", email: "guest@marginalia.ai" })
+             });
+             // Retry chat
+             const retryResponse = await fetch('/api/users/1/chat/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: userText }),
+             });
+             if (!retryResponse.ok) throw new Error('Retry failed');
+             const retryData = await retryResponse.json();
+             setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: retryData.reply }]);
+             return;
+        }
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      
+      setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: data.reply }]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages((prev) => [...prev, { id: Date.now().toString() + 'e', role: 'liora', text: "*(The connection to the ethereal plane seems unstable...)*" }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-[#0e0c0d] overflow-hidden text-[#f7f5f3] font-sans antialiased">
@@ -100,30 +165,44 @@ export default function LibraryDashboard() {
           </header>
 
           <div className="flex-1 flex flex-col gap-6 overflow-y-auto pb-24 no-scrollbar">
-            {/* Greeting Bubble */}
-            <div className="flex items-start gap-4 max-w-2xl">
-              <div className="relative flex-shrink-0">
-                {/* Breathing glow behind avatar */}
-                <div className="absolute inset-0 bg-[#d4af37] rounded-full blur-[10px] opacity-20 animate-[pulse_3s_ease-in-out_infinite]" />
-                <div className="w-10 h-10 rounded-full overflow-hidden border border-[#d4af37]/40 relative z-10">
-                  <Image src="/liora_portrait.png" alt="Liora" fill className="object-cover" />
-                </div>
-              </div>
-              <div className="bg-[#161314]/80 backdrop-blur-md border border-white/5 p-5 rounded-2xl rounded-tl-none shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_10px_30px_-10px_rgba(0,0,0,0.5)]">
-                {mounted && (
-                  <div className="space-y-3">
-                    <WhisperMessage 
-                      text="Welcome back. It's so lovely to see you. I've been organizing the shelves and setting aside a few titles I thought you might enjoy based on our last conversation." 
-                      delay={200} 
-                    />
-                    <WhisperMessage 
-                      text="Are you in the mood for something comforting and familiar today, or perhaps an adventure into something completely new?" 
-                      delay={1800} 
-                    />
+            {mounted && messages.map((msg) => (
+              <div key={msg.id} className={`flex items-start gap-4 max-w-2xl ${msg.role === 'user' ? 'self-end flex-row-reverse' : ''}`}>
+                {msg.role === 'liora' && (
+                  <div className="relative flex-shrink-0">
+                    <div className="absolute inset-0 bg-[#d4af37] rounded-full blur-[10px] opacity-20 animate-[pulse_3s_ease-in-out_infinite]" />
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-[#d4af37]/40 relative z-10">
+                      <Image src="/liora_portrait.png" alt="Liora" fill className="object-cover" />
+                    </div>
                   </div>
                 )}
+                <div className={`p-5 rounded-2xl shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_10px_30px_-10px_rgba(0,0,0,0.5)] ${
+                  msg.role === 'user' 
+                    ? 'bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#f3efe0] rounded-tr-none' 
+                    : 'bg-[#161314]/80 backdrop-blur-md border border-white/5 rounded-tl-none'
+                }`}>
+                  {msg.role === 'liora' ? (
+                    <WhisperMessage text={msg.text} delay={0} />
+                  ) : (
+                    <p className="font-serif leading-relaxed text-[15px]">{msg.text}</p>
+                  )}
+                </div>
               </div>
-            </div>
+            ))}
+            {isLoading && (
+              <div className="flex items-start gap-4 max-w-2xl">
+                <div className="relative flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-[#d4af37]/40 relative z-10 opacity-50">
+                    <Image src="/liora_portrait.png" alt="Liora" fill className="object-cover" />
+                  </div>
+                </div>
+                <div className="bg-[#161314]/80 backdrop-blur-md border border-white/5 p-5 rounded-2xl rounded-tl-none shadow-[inset_1px_1px_0_rgba(255,255,255,0.05)] flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37]/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37]/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37]/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Chat Input Area */}
@@ -133,10 +212,20 @@ export default function LibraryDashboard() {
               <div className="relative flex items-center bg-[#0e0c0d]/90 backdrop-blur-xl border border-white/10 group-focus-within:border-[#d4af37]/30 rounded-2xl px-4 py-3 shadow-2xl transition-colors">
                 <input 
                   type="text" 
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSendMessage();
+                  }}
+                  disabled={isLoading}
                   placeholder="Tell Liora what you're looking for..." 
-                  className="flex-1 bg-transparent border-none outline-none text-[#f3efe0] placeholder-[#e6dfd5]/30 text-[15px] font-serif"
+                  className="flex-1 bg-transparent border-none outline-none text-[#f3efe0] placeholder-[#e6dfd5]/30 text-[15px] font-serif disabled:opacity-50"
                 />
-                <button className="p-2 rounded-xl bg-[#d4af37]/10 text-[#d4af37] hover:bg-[#d4af37] hover:text-[#0e0c0d] transition-colors">
+                <button 
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !input.trim()}
+                  className="p-2 rounded-xl bg-[#d4af37]/10 text-[#d4af37] hover:bg-[#d4af37] hover:text-[#0e0c0d] transition-colors disabled:opacity-50 disabled:hover:bg-[#d4af37]/10 disabled:hover:text-[#d4af37]"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                   </svg>
