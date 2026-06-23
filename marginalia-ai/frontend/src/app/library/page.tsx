@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import LivingBook from "@/components/LivingBook";
 import WhisperMessage from "@/components/WhisperMessage";
+import OnboardingFlow from "@/components/OnboardingFlow";
 
 interface Message {
   id: string;
@@ -15,13 +16,11 @@ interface Message {
 export default function LibraryDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState<{username: string, email: string} | null>(null);
+  const [user, setUser] = useState<{username: string, email: string, taste_profile?: any} | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you. I've been organizing the shelves and setting aside a few titles I thought you might enjoy based on our last conversation." },
-    { id: '2', role: 'liora', text: "Are you in the mood for something comforting and familiar today, or perhaps an adventure into something completely new?" }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,6 +40,14 @@ export default function LibraryDashboard() {
     })
     .then(data => {
       setUser(data);
+      if (!data.taste_profile || !data.taste_profile.favorite_genres) {
+        setNeedsOnboarding(true);
+      } else {
+        // If they are returning, push a standard welcome back
+        setMessages([
+          { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you." }
+        ]);
+      }
       setMounted(true);
     })
     .catch(() => {
@@ -52,6 +59,30 @@ export default function LibraryDashboard() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const triggerInitialGreeting = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/me/chat/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: '__INITIAL_GREETING__' }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([{ id: Date.now().toString(), role: 'liora', text: data.reply }]);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -292,6 +323,15 @@ export default function LibraryDashboard() {
         `}</style>
 
       </div>
+
+      {needsOnboarding && (
+        <OnboardingFlow 
+          onComplete={() => {
+            setNeedsOnboarding(false);
+            triggerInitialGreeting();
+          }} 
+        />
+      )}
     </div>
   );
 }

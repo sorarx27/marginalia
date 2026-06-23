@@ -48,10 +48,16 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
         taste_profile=taste_text
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_message}
-    ]
+    if user_message == "__INITIAL_GREETING__":
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "Hello. I am a new reader in your library. Please introduce yourself and welcome me, referencing my taste profile if you can."}
+        ]
+    else:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ]
 
     # 5. Call Qwen (Tongyi Qianwen)
     response = Generation.call(
