@@ -64,7 +64,7 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
 
 class UserCreate(UserBase):
-    pass
+    password: str
 
 class UserResponse(UserBase):
     id: int
@@ -82,3 +82,11 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+# --- Auth Schemas ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None

@@ -2,8 +2,10 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-import models, schemas, crud
+import models, schemas, crud, auth
 from database import engine, get_db
+from fastapi.security import OAuth2PasswordRequestForm
+from datetime import timedelta
 
 # Create the database tables
 models.Base.metadata.create_all(bind=engine)
@@ -31,6 +33,22 @@ def status_info():
         "qwen_integration": "Pending"
     }
 
+# --- Auth Endpoints ---
+@app.post("/token", response_model=schemas.Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = auth.authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
 # --- User Endpoints ---
 @app.post("/users/", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -39,41 +57,32 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
 
-@app.get("/users/{user_id}", response_model=schemas.UserResponse)
-def read_user(user_id: int, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id=user_id)
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return db_user
+@app.get("/users/me", response_model=schemas.UserResponse)
+def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
 
 # --- Book Endpoints ---
-@app.post("/users/{user_id}/books/", response_model=schemas.BookResponse)
-def create_book_for_user(user_id: int, book: schemas.BookCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id=user_id)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return crud.create_book(db=db, book=book, user_id=user_id)
+@app.post("/users/me/books/", response_model=schemas.BookResponse)
+def create_book_for_user(book: schemas.BookCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.create_book(db=db, book=book, user_id=current_user.id)
 
-@app.get("/users/{user_id}/books/", response_model=List[schemas.BookResponse])
-def read_books_for_user(user_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_books(db, user_id=user_id, skip=skip, limit=limit)
+@app.get("/users/me/books/", response_model=List[schemas.BookResponse])
+def read_books_for_user(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_books(db, user_id=current_user.id, skip=skip, limit=limit)
 
 # --- Memory Endpoints ---
-@app.post("/users/{user_id}/memories/", response_model=schemas.MemoryResponse)
-def create_memory_for_user(user_id: int, memory: schemas.MemoryCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id=user_id)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return crud.create_memory(db=db, memory=memory, user_id=user_id)
+@app.post("/users/me/memories/", response_model=schemas.MemoryResponse)
+def create_memory_for_user(memory: schemas.MemoryCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.create_memory(db=db, memory=memory, user_id=current_user.id)
 
-@app.get("/users/{user_id}/memories/", response_model=List[schemas.MemoryResponse])
-def read_memories_for_user(user_id: int, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_memories(db, user_id=user_id, skip=skip, limit=limit)
+@app.get("/users/me/memories/", response_model=List[schemas.MemoryResponse])
+def read_memories_for_user(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    return crud.get_memories(db, user_id=current_user.id, skip=skip, limit=limit)
 
 # --- Taste Profile Endpoints ---
-@app.put("/users/{user_id}/taste_profile/", response_model=schemas.TasteProfileResponse)
-def update_user_taste_profile(user_id: int, profile: schemas.TasteProfileCreate, db: Session = Depends(get_db)):
-    db_profile = crud.update_taste_profile(db=db, user_id=user_id, profile_update=profile)
+@app.put("/users/me/taste_profile/", response_model=schemas.TasteProfileResponse)
+def update_user_taste_profile(profile: schemas.TasteProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_profile = crud.update_taste_profile(db=db, user_id=current_user.id, profile_update=profile)
     if not db_profile:
         raise HTTPException(status_code=404, detail="Taste profile not found")
     return db_profile
@@ -81,12 +90,8 @@ def update_user_taste_profile(user_id: int, profile: schemas.TasteProfileCreate,
 # --- AI Chat Endpoints ---
 from agents import liora
 
-@app.post("/users/{user_id}/chat/", response_model=schemas.ChatResponse)
-def chat_with_liora(user_id: int, chat_request: schemas.ChatRequest, db: Session = Depends(get_db)):
-    db_user = crud.get_user(db, user_id=user_id)
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
+@app.post("/users/me/chat/", response_model=schemas.ChatResponse)
+def chat_with_liora(chat_request: schemas.ChatRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Generate response via DashScope
-    reply = liora.generate_liora_response(db=db, user_id=user_id, user_message=chat_request.message)
+    reply = liora.generate_liora_response(db=db, user_id=current_user.id, user_message=chat_request.message)
     return {"reply": reply}

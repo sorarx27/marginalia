@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import LivingBook from "@/components/LivingBook";
 import WhisperMessage from "@/components/WhisperMessage";
 
@@ -12,7 +13,9 @@ interface Message {
 }
 
 export default function LibraryDashboard() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState<{username: string, email: string} | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -22,8 +25,29 @@ export default function LibraryDashboard() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/');
+      return;
+    }
+    
+    // Fetch user details
+    fetch('/api/users/me', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Auth failed');
+      return res.json();
+    })
+    .then(data => {
+      setUser(data);
+      setMounted(true);
+    })
+    .catch(() => {
+      localStorage.removeItem('token');
+      router.push('/');
+    });
+  }, [router]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -39,31 +63,17 @@ export default function LibraryDashboard() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/users/1/chat/', {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/me/chat/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ message: userText }),
       });
       
       if (!response.ok) {
-        // Try creating the user if they don't exist
-        if (response.status === 404) {
-             await fetch('/api/users/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: "Guest Reader", email: "guest@marginalia.ai" })
-             });
-             // Retry chat
-             const retryResponse = await fetch('/api/users/1/chat/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userText }),
-             });
-             if (!retryResponse.ok) throw new Error('Retry failed');
-             const retryData = await retryResponse.json();
-             setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: retryData.reply }]);
-             return;
-        }
         throw new Error('Network response was not ok');
       }
       const data = await response.json();
@@ -140,11 +150,11 @@ export default function LibraryDashboard() {
 
           <div className="mt-auto">
             <button className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-white/5 transition-colors text-left">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-xs">
-                U
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-xs uppercase">
+                {user?.username ? user.username[0] : 'U'}
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-sm font-medium text-[#e6dfd5] truncate">Guest Reader</p>
+                <p className="text-sm font-medium text-[#e6dfd5] truncate">{user?.username || 'Guest Reader'}</p>
                 <p className="text-xs text-[#e6dfd5]/40 truncate">Manage Account</p>
               </div>
             </button>

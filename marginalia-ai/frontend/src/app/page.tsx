@@ -6,13 +6,20 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import DoorTransition from "@/components/DoorTransition";
 import MagicCursor from "@/components/MagicCursor";
+import AuthModal from "@/components/AuthModal";
 
 export default function Home() {
   const router = useRouter();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const handleEnterLibrary = () => {
-    setIsTransitioning(true);
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsTransitioning(true);
+    } else {
+      setIsAuthModalOpen(true);
+    }
   };
   return (
     <div className="min-h-screen flex flex-col justify-between bg-[#0e0c0d] text-[#f7f5f3] font-sans antialiased selection:bg-[#d4af37]/30 selection:text-[#f3efe0]">
@@ -29,10 +36,16 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <button className="text-sm font-medium text-[#e6dfd5]/70 hover:text-[#f3efe0] transition-colors duration-200">
+          <button 
+            onClick={() => setIsAuthModalOpen(true)}
+            className="text-sm font-medium text-[#e6dfd5]/70 hover:text-[#f3efe0] transition-colors duration-200"
+          >
             Log In
           </button>
-          <button className="text-sm font-medium px-4 py-2 rounded-lg border border-[#d4af37]/30 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/5 transition-all duration-300">
+          <button 
+            onClick={() => setIsAuthModalOpen(true)}
+            className="text-sm font-medium px-4 py-2 rounded-lg border border-[#d4af37]/30 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/5 transition-all duration-300"
+          >
             Sign Up
           </button>
         </div>
@@ -127,6 +140,15 @@ export default function Home() {
       <DoorTransition 
         isAnimating={isTransitioning} 
         onAnimationComplete={() => router.push('/library')} 
+      />
+
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        onSuccess={() => {
+          setIsAuthModalOpen(false);
+          setIsTransitioning(true);
+        }}
       />
     </div>
   );
