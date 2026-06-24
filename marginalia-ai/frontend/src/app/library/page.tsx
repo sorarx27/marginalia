@@ -21,6 +21,7 @@ export default function LibraryDashboard() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -150,8 +151,25 @@ export default function LibraryDashboard() {
       {/* Dashboard Layout */}
       <div className={`relative z-10 flex h-screen max-w-[1600px] mx-auto transition-all duration-[1500ms] delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         
+        {/* Mobile Backdrop */}
+        {isMobileNavOpen && (
+          <div 
+            className="absolute inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm"
+            onClick={() => setIsMobileNavOpen(false)}
+          />
+        )}
+
         {/* Left Sidebar: Navigation */}
-        <aside className="w-64 border-r border-white/5 p-6 flex flex-col gap-8 bg-[#0e0c0d]/40 backdrop-blur-xl shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
+        <aside className={`absolute md:relative z-50 w-64 h-full border-r border-white/5 p-6 flex flex-col gap-8 bg-[#0e0c0d]/95 md:bg-[#0e0c0d]/40 backdrop-blur-xl shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)] transition-transform duration-300 ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+          <button 
+            className="absolute top-6 right-6 md:hidden text-[#e6dfd5]/50 hover:text-[#d4af37]"
+            onClick={() => setIsMobileNavOpen(false)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
           <div className="flex items-center gap-3">
             <span className="text-xl font-bold tracking-wider text-[#e6dfd5] font-serif drop-shadow-md">
               M A R G I N A L I A
@@ -193,15 +211,25 @@ export default function LibraryDashboard() {
         </aside>
 
         {/* Center: Chat / Interaction Area */}
-        <main className="flex-1 flex flex-col relative px-8 py-6">
-          <header className="flex justify-between items-center mb-8">
-            <h2 className="text-xl font-medium text-[#f3efe0] font-serif">Liora's Desk</h2>
+        <main className="flex-1 flex flex-col relative px-4 md:px-8 py-4 md:py-6 w-full">
+          <header className="flex justify-between items-center mb-6 md:mb-8">
+            <div className="flex items-center gap-3">
+              <button 
+                className="md:hidden p-2 -ml-2 text-[#e6dfd5]/70 hover:text-[#d4af37]"
+                onClick={() => setIsMobileNavOpen(true)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              </button>
+              <h2 className="text-lg md:text-xl font-medium text-[#f3efe0] font-serif">Liora's Desk</h2>
+            </div>
             <div className="flex gap-2 items-center">
               <span className="flex h-2 w-2 relative">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#d4af37] opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#d4af37]"></span>
               </span>
-              <span className="text-xs text-[#d4af37]/80 font-serif italic">Liora is listening...</span>
+              <span className="text-xs text-[#d4af37]/80 font-serif italic hidden sm:inline">Liora is listening...</span>
             </div>
           </header>
 
@@ -247,7 +275,7 @@ export default function LibraryDashboard() {
           </div>
 
           {/* Chat Input Area */}
-          <div className="absolute bottom-8 left-8 right-8">
+          <div className="absolute bottom-4 md:bottom-8 left-4 md:left-8 right-4 md:right-8">
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/20 via-[#f3efe0]/10 to-[#d4af37]/20 rounded-2xl blur opacity-30 group-focus-within:opacity-100 group-focus-within:bg-[#d4af37]/40 transition duration-500"></div>
               <div className="relative flex items-center bg-[#0e0c0d]/90 backdrop-blur-xl border border-white/10 group-focus-within:border-[#d4af37]/30 rounded-2xl px-4 py-3 shadow-2xl transition-colors">
@@ -277,7 +305,7 @@ export default function LibraryDashboard() {
         </main>
 
         {/* Right Sidebar: Memory / Context Panel */}
-        <aside className="w-80 border-l border-white/5 p-6 flex flex-col gap-8 bg-[#0e0c0d]/60 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]">
+        <aside className="hidden xl:flex w-80 border-l border-white/5 p-6 flex-col gap-8 bg-[#0e0c0d]/60 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]">
           <div>
             <h3 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-5 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-[#d4af37]/70">
