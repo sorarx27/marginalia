@@ -29,22 +29,22 @@ export default function Home() {
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#d4af37]/10 rounded-full blur-[150px] pointer-events-none mix-blend-screen"></div>
 
       {/* Header */}
-      <header className="relative z-10 max-w-7xl mx-auto w-full px-8 py-8 flex justify-between items-center border-b border-[#f7f5f3]/5">
+      <header className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-[#f7f5f3]/5">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-wider text-[#e6dfd5] font-serif">
+          <span className="text-lg md:text-xl font-bold tracking-wider text-[#e6dfd5] font-serif">
             M A R G I N A L I A
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <button 
             onClick={() => setIsAuthModalOpen(true)}
-            className="text-sm font-medium text-[#e6dfd5]/70 hover:text-[#f3efe0] transition-colors duration-200"
+            className="text-xs md:text-sm font-medium text-[#e6dfd5]/70 hover:text-[#f3efe0] transition-colors duration-200"
           >
             Log In
           </button>
           <button 
             onClick={() => setIsAuthModalOpen(true)}
-            className="text-sm font-medium px-4 py-2 rounded-lg border border-[#d4af37]/30 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/5 transition-all duration-300"
+            className="text-xs md:text-sm font-medium px-4 py-2 rounded-lg border border-[#d4af37]/30 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/5 transition-all duration-300"
           >
             Sign Up
           </button>
@@ -52,10 +52,10 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-5xl mx-auto w-full px-8 py-16 flex flex-col md:flex-row items-center gap-12 md:gap-16 flex-1 justify-center">
+      <main className="relative z-10 max-w-5xl mx-auto w-full px-6 md:px-8 py-10 md:py-16 flex flex-col md:flex-row items-center gap-10 md:gap-16 flex-1 justify-center">
         {/* Left Side: Text/Hero */}
-        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm text-[#e6dfd5]/80 backdrop-blur-md">
+        <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-6 md:gap-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs md:text-sm text-[#e6dfd5]/80 backdrop-blur-md">
             <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37] animate-pulse" />
             Meet Liora, Your AI Reading Companion
           </div>
@@ -69,10 +69,10 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto mt-2">
             <button 
               onClick={handleEnterLibrary}
-              className="h-12 px-8 rounded-lg bg-[#d4af37] text-[#0e0c0d] font-semibold text-sm hover:bg-[#c29e2f] transition-all duration-300 shadow-lg shadow-[#d4af37]/15 hover:shadow-[#d4af37]/25 flex items-center justify-center gap-2 group w-full sm:w-auto"
+              className="h-12 px-6 md:px-8 rounded-lg bg-[#d4af37] text-[#0e0c0d] font-semibold text-sm hover:bg-[#c29e2f] transition-all duration-300 shadow-lg shadow-[#d4af37]/15 hover:shadow-[#d4af37]/25 flex items-center justify-center gap-2 group w-full sm:w-auto"
             >
               Step inside Liora's Library
               <svg 
@@ -87,14 +87,14 @@ export default function Home() {
               </svg>
             </button>
             
-            <button className="h-12 px-6 rounded-lg bg-white/5 border border-white/10 text-[#f3efe0] hover:bg-white/10 font-semibold text-sm transition-all duration-300 backdrop-blur-sm">
+            <button className="h-12 px-6 rounded-lg bg-white/5 border border-white/10 text-[#f3efe0] hover:bg-white/10 font-semibold text-sm transition-all duration-300 backdrop-blur-sm w-full sm:w-auto">
               Learn more
             </button>
           </div>
         </div>
 
         {/* Right Side: Portrait Frame */}
-        <div className="flex-1 max-w-[380px] w-full flex justify-center">
+        <div className="flex-1 max-w-[280px] md:max-w-[380px] w-full flex justify-center mt-4 md:mt-0">
           <div className="relative group w-full aspect-[4/5]">
             {/* Glowing Aura Background */}
             <div className="absolute -inset-1 bg-gradient-to-r from-[#d4af37]/30 to-[#9d7e1c]/10 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 pointer-events-none" />
@@ -132,9 +132,9 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 max-w-7xl mx-auto w-full px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#e6dfd5]/40 border-t border-[#f7f5f3]/5">
+      <footer className="relative z-10 max-w-7xl mx-auto w-full px-6 md:px-8 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[11px] md:text-xs text-[#e6dfd5]/40 border-t border-[#f7f5f3]/5 text-center sm:text-left">
         <p>&copy; {new Date().getFullYear()} Marginalia. Your digital reading companion.</p>
-        <p className="font-serif italic text-right">"A room without books is like a body without a soul."</p>
+        <p className="font-serif italic sm:text-right">"A room without books is like a body without a soul."</p>
       </footer>
 
       <DoorTransition 
