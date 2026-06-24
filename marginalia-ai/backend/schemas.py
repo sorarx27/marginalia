@@ -38,6 +38,7 @@ class BookUpdate(BaseModel):
     current_page: Optional[int] = None
     status: Optional[str] = None
     rating: Optional[float] = None
+    note: Optional[str] = None
 
 class BookResponse(BookBase):
     id: int

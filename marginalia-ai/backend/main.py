@@ -4,6 +4,7 @@ from sqlalchemy import text
 from typing import List
 import models, schemas, crud, auth, google_books
 from database import engine, get_db
+from agents import liora
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 
@@ -71,10 +72,15 @@ def read_books_for_user(skip: int = 0, limit: int = 100, db: Session = Depends(g
     return crud.get_books(db, user_id=current_user.id, skip=skip, limit=limit)
 
 @app.put("/users/me/books/{book_id}", response_model=schemas.BookResponse)
-def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     db_book = crud.update_book_progress(db=db, book_id=book_id, user_id=current_user.id, book_update=book_update)
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
+        
+    if book_update.note:
+        context_msg = f"I just read up to page {db_book.current_page} of {db_book.title}. My thoughts: {book_update.note}"
+        background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, context_msg, "Thank you for sharing your thoughts on this book.")
+        
     return db_book
 
 @app.get("/books/search")
@@ -100,8 +106,6 @@ def update_user_taste_profile(profile: schemas.TasteProfileCreate, db: Session =
     return db_profile
 
 # --- AI Chat Endpoints ---
-from agents import liora
-
 @app.post("/users/me/chat/", response_model=schemas.ChatResponse)
 def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Generate response via DashScope

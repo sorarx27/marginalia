@@ -7,6 +7,7 @@ import LivingBook from "@/components/LivingBook";
 import WhisperMessage from "@/components/WhisperMessage";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import BookSearchModal from "@/components/BookSearchModal";
+import BookProgressModal from "@/components/BookProgressModal";
 
 interface Message {
   id: string;
@@ -42,6 +43,7 @@ export default function LibraryDashboard() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [activeBooks, setActiveBooks] = useState<Book[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [selectedProgressBook, setSelectedProgressBook] = useState<Book | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -139,6 +141,32 @@ export default function LibraryDashboard() {
       }
     } catch (e) {
       console.error("Failed to add book", e);
+    }
+  };
+
+  const handleUpdateProgress = async (bookId: number, newPage: number, note: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch(`/api/users/me/books/${bookId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ current_page: newPage, note: note })
+      });
+      if (res.ok) {
+        setSelectedProgressBook(null);
+        fetchBooks();
+        if (note) {
+          // A note triggers memory extraction. Wait a bit then fetch memories
+          setTimeout(() => fetchMemories(), 3000);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to update progress", e);
     }
   };
 
@@ -450,24 +478,7 @@ export default function LibraryDashboard() {
                     coverImageUrl={book.cover_image_url}
                     currentPage={book.current_page}
                     totalPages={book.total_pages}
-                    onClick={() => {
-                      // Placeholder for progress update modal
-                      const newPage = prompt(`Update current page for ${book.title} (out of ${book.total_pages}):`, book.current_page.toString());
-                      if (newPage !== null) {
-                         const parsed = parseInt(newPage);
-                         if (!isNaN(parsed)) {
-                            const token = localStorage.getItem('token');
-                            fetch(`/api/users/me/books/${book.id}`, {
-                              method: 'PUT',
-                              headers: { 
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}` 
-                              },
-                              body: JSON.stringify({ current_page: parsed })
-                            }).then(() => fetchBooks());
-                         }
-                      }
-                    }}
+                    onClick={() => setSelectedProgressBook(book)}
                   />
                 ))}
                 
@@ -523,6 +534,14 @@ export default function LibraryDashboard() {
         <BookSearchModal 
           onClose={() => setIsSearchModalOpen(false)}
           onSelectBook={handleAddBook}
+        />
+      )}
+
+      {selectedProgressBook && (
+        <BookProgressModal 
+          book={selectedProgressBook}
+          onClose={() => setSelectedProgressBook(null)}
+          onSave={handleUpdateProgress}
         />
       )}
     </div>

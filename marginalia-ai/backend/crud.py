@@ -38,6 +38,8 @@ def update_book_progress(db: Session, book_id: int, user_id: int, book_update: s
     db_book = db.query(models.Book).filter(models.Book.id == book_id, models.Book.owner_id == user_id).first()
     if db_book:
         update_data = book_update.model_dump(exclude_unset=True)
+        if "note" in update_data:
+            update_data.pop("note")
         for key, value in update_data.items():
             setattr(db_book, key, value)
         db.commit()
