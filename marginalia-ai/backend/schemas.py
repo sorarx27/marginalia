@@ -34,6 +34,11 @@ class BookBase(BaseModel):
 class BookCreate(BookBase):
     pass
 
+class BookUpdate(BaseModel):
+    current_page: Optional[int] = None
+    status: Optional[str] = None
+    rating: Optional[float] = None
+
 class BookResponse(BookBase):
     id: int
     owner_id: int

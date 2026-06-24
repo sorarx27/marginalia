@@ -34,6 +34,16 @@ def create_book(db: Session, book: schemas.BookCreate, user_id: int):
     db.refresh(db_book)
     return db_book
 
+def update_book_progress(db: Session, book_id: int, user_id: int, book_update: schemas.BookUpdate):
+    db_book = db.query(models.Book).filter(models.Book.id == book_id, models.Book.owner_id == user_id).first()
+    if db_book:
+        update_data = book_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_book, key, value)
+        db.commit()
+        db.refresh(db_book)
+    return db_book
+
 # --- Memory CRUD ---
 def get_memories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Memory).filter(models.Memory.user_id == user_id).order_by(models.Memory.timestamp.desc()).offset(skip).limit(limit).all()

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import LivingBook from "@/components/LivingBook";
 import WhisperMessage from "@/components/WhisperMessage";
 import OnboardingFlow from "@/components/OnboardingFlow";
+import BookSearchModal from "@/components/BookSearchModal";
 
 interface Message {
   id: string;
@@ -19,6 +20,17 @@ interface Memory {
   content: string;
 }
 
+interface Book {
+  id: number;
+  title: string;
+  author: string;
+  isbn: string | null;
+  total_pages: number;
+  current_page: number;
+  cover_image_url: string;
+  status: string;
+}
+
 export default function LibraryDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -28,6 +40,8 @@ export default function LibraryDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [activeBooks, setActiveBooks] = useState<Book[]>([]);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,6 +77,7 @@ export default function LibraryDashboard() {
     });
 
     fetchMemories();
+    fetchBooks();
   }, [router]);
 
   const fetchMemories = async () => {
@@ -79,6 +94,51 @@ export default function LibraryDashboard() {
       }
     } catch (e) {
       console.error("Failed to fetch memories", e);
+    }
+  };
+
+  const fetchBooks = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch('/api/users/me/books/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveBooks(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch books", e);
+    }
+  };
+
+  const handleAddBook = async (book: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch('/api/users/me/books/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          title: book.title,
+          author: book.author,
+          isbn: book.isbn,
+          total_pages: book.total_pages,
+          cover_image_url: book.cover_image_url
+        })
+      });
+      if (res.ok) {
+        setIsSearchModalOpen(false);
+        fetchBooks();
+      }
+    } catch (e) {
+      console.error("Failed to add book", e);
     }
   };
 
@@ -374,7 +434,63 @@ export default function LibraryDashboard() {
               On The Desk
             </h3>
             {/* Living Book */}
-            <LivingBook title="The Starless Sea" author="Susanna Clarke" />
+            {activeBooks.length > 0 ? (
+              <div className="space-y-4">
+                {activeBooks.map(book => (
+                  <LivingBook 
+                    key={book.id}
+                    title={book.title} 
+                    author={book.author} 
+                    coverImageUrl={book.cover_image_url}
+                    currentPage={book.current_page}
+                    totalPages={book.total_pages}
+                    onClick={() => {
+                      // Placeholder for progress update modal
+                      const newPage = prompt(`Update current page for ${book.title} (out of ${book.total_pages}):`, book.current_page.toString());
+                      if (newPage !== null) {
+                         const parsed = parseInt(newPage);
+                         if (!isNaN(parsed)) {
+                            const token = localStorage.getItem('token');
+                            fetch(`/api/users/me/books/${book.id}`, {
+                              method: 'PUT',
+                              headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}` 
+                              },
+                              body: JSON.stringify({ current_page: parsed })
+                            }).then(() => fetchBooks());
+                         }
+                      }
+                    }}
+                  />
+                ))}
+                
+                <button 
+                  onClick={() => setIsSearchModalOpen(true)}
+                  className="w-full py-3 rounded-xl border border-dashed border-[#d4af37]/30 text-[#d4af37]/70 hover:text-[#d4af37] hover:bg-[#d4af37]/5 transition-colors font-serif text-sm flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  Add another book
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsSearchModalOpen(true)}
+                className="w-full group p-6 rounded-xl border border-dashed border-white/20 hover:border-[#d4af37]/50 hover:bg-[#d4af37]/5 transition-all flex flex-col items-center justify-center gap-3 text-center"
+              >
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-[#d4af37]">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[#f3efe0] font-serif text-sm group-hover:text-[#d4af37] transition-colors">Place a book on your desk</p>
+                  <p className="text-[11px] text-[#e6dfd5]/40 mt-1">Search the global library</p>
+                </div>
+              </button>
+            )}
           </div>
         </aside>
 
@@ -394,6 +510,13 @@ export default function LibraryDashboard() {
             setNeedsOnboarding(false);
             triggerInitialGreeting();
           }} 
+        />
+      )}
+
+      {isSearchModalOpen && (
+        <BookSearchModal 
+          onClose={() => setIsSearchModalOpen(false)}
+          onSelectBook={handleAddBook}
         />
       )}
     </div>

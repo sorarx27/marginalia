@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-import models, schemas, crud, auth
+import models, schemas, crud, auth, google_books
 from database import engine, get_db
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
@@ -69,6 +69,18 @@ def create_book_for_user(book: schemas.BookCreate, db: Session = Depends(get_db)
 @app.get("/users/me/books/", response_model=List[schemas.BookResponse])
 def read_books_for_user(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     return crud.get_books(db, user_id=current_user.id, skip=skip, limit=limit)
+
+@app.put("/users/me/books/{book_id}", response_model=schemas.BookResponse)
+def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_book = crud.update_book_progress(db=db, book_id=book_id, user_id=current_user.id, book_update=book_update)
+    if not db_book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return db_book
+
+@app.get("/books/search")
+def search_books_api(q: str, current_user: models.User = Depends(auth.get_current_user)):
+    results = google_books.search_books(q)
+    return {"results": results}
 
 # --- Memory Endpoints ---
 @app.post("/users/me/memories/", response_model=schemas.MemoryResponse)
