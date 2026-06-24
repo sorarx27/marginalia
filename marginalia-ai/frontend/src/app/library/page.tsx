@@ -21,7 +21,6 @@ export default function LibraryDashboard() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,7 +119,7 @@ export default function LibraryDashboard() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0e0c0d] overflow-hidden text-[#f7f5f3] font-sans antialiased">
+    <div className="relative h-[100dvh] w-full bg-[#0e0c0d] overflow-hidden text-[#f7f5f3] font-sans antialiased">
       {/* Entry Flash Fade Out (Catches the transition from homepage) */}
       <div className={`absolute inset-0 z-[100] bg-[#f3efe0] pointer-events-none transition-opacity duration-[2000ms] ease-in-out ${mounted ? 'opacity-0' : 'opacity-100'}`} />
 
@@ -149,27 +148,10 @@ export default function LibraryDashboard() {
       )}
 
       {/* Dashboard Layout */}
-      <div className={`relative z-10 flex h-screen max-w-[1600px] mx-auto transition-all duration-[1500ms] delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-        
-        {/* Mobile Backdrop */}
-        {isMobileNavOpen && (
-          <div 
-            className="absolute inset-0 z-40 bg-black/50 md:hidden backdrop-blur-sm"
-            onClick={() => setIsMobileNavOpen(false)}
-          />
-        )}
+      <div className={`relative z-10 flex h-[100dvh] max-w-[1600px] mx-auto transition-all duration-[1500ms] delay-500 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
 
-        {/* Left Sidebar: Navigation */}
-        <aside className={`absolute md:relative z-50 w-64 h-full border-r border-white/5 p-6 flex flex-col gap-8 bg-[#0e0c0d]/95 md:bg-[#0e0c0d]/40 backdrop-blur-xl shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)] transition-transform duration-300 ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-          <button 
-            className="absolute top-6 right-6 md:hidden text-[#e6dfd5]/50 hover:text-[#d4af37]"
-            onClick={() => setIsMobileNavOpen(false)}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          
+        {/* Left Sidebar: Navigation (Desktop) */}
+        <aside className="hidden md:flex w-64 h-full border-r border-white/5 p-6 flex-col gap-8 bg-[#0e0c0d]/40 backdrop-blur-xl shadow-[inset_-1px_0_0_rgba(255,255,255,0.02)]">
           <div className="flex items-center gap-3">
             <span className="text-xl font-bold tracking-wider text-[#e6dfd5] font-serif drop-shadow-md">
               M A R G I N A L I A
@@ -211,17 +193,9 @@ export default function LibraryDashboard() {
         </aside>
 
         {/* Center: Chat / Interaction Area */}
-        <main className="flex-1 flex flex-col relative px-4 md:px-8 py-4 md:py-6 w-full">
-          <header className="flex justify-between items-center mb-6 md:mb-8">
+        <main className="flex-1 flex flex-col relative px-4 md:px-8 pt-4 md:py-6 w-full h-[100dvh] md:h-auto">
+          <header className="flex justify-between items-center mb-4 md:mb-8 mt-2 md:mt-0">
             <div className="flex items-center gap-3">
-              <button 
-                className="md:hidden p-2 -ml-2 text-[#e6dfd5]/70 hover:text-[#d4af37]"
-                onClick={() => setIsMobileNavOpen(true)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-              </button>
               <h2 className="text-lg md:text-xl font-medium text-[#f3efe0] font-serif">Liora's Desk</h2>
             </div>
             <div className="flex gap-2 items-center">
@@ -233,7 +207,7 @@ export default function LibraryDashboard() {
             </div>
           </header>
 
-          <div className="flex-1 flex flex-col gap-6 overflow-y-auto pb-24 no-scrollbar">
+          <div className="flex-1 flex flex-col gap-6 overflow-y-auto pb-36 md:pb-24 no-scrollbar">
             {mounted && messages.map((msg) => (
               <div key={msg.id} className={`flex items-start gap-4 max-w-2xl ${msg.role === 'user' ? 'self-end flex-row-reverse' : ''}`}>
                 {msg.role === 'liora' && (
@@ -275,7 +249,7 @@ export default function LibraryDashboard() {
           </div>
 
           {/* Chat Input Area */}
-          <div className="absolute bottom-4 md:bottom-8 left-4 md:left-8 right-4 md:right-8">
+          <div className="absolute bottom-20 md:bottom-8 left-4 md:left-8 right-4 md:right-8 z-20">
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/20 via-[#f3efe0]/10 to-[#d4af37]/20 rounded-2xl blur opacity-30 group-focus-within:opacity-100 group-focus-within:bg-[#d4af37]/40 transition duration-500"></div>
               <div className="relative flex items-center bg-[#0e0c0d]/90 backdrop-blur-xl border border-white/10 group-focus-within:border-[#d4af37]/30 rounded-2xl px-4 py-3 shadow-2xl transition-colors">
@@ -303,6 +277,34 @@ export default function LibraryDashboard() {
             </div>
           </div>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden absolute bottom-0 left-0 right-0 h-16 bg-[#0e0c0d]/90 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 z-50">
+          <button className="flex flex-col items-center gap-1 text-[#d4af37]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.444 3 12c0 2.104.859 4.023 2.273 5.38-.443.865-1.146 1.674-2.273 2.22.428.026.862.036 1.302.036 2.012 0 3.86-.554 5.402-1.536.883.1 1.79.15 2.723.15z" />
+            </svg>
+            <span className="text-[10px] font-medium">Chat</span>
+          </button>
+          <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+            <span className="text-[10px] font-medium">Log</span>
+          </button>
+          <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+            </svg>
+            <span className="text-[10px] font-medium">Taste</span>
+          </button>
+          <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-[9px] uppercase">
+              {user?.username ? user.username[0] : 'U'}
+            </div>
+            <span className="text-[10px] font-medium">Profile</span>
+          </button>
+        </nav>
 
         {/* Right Sidebar: Memory / Context Panel */}
         <aside className="hidden xl:flex w-80 border-l border-white/5 p-6 flex-col gap-8 bg-[#0e0c0d]/60 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]">
