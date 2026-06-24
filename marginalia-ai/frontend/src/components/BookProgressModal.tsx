@@ -80,11 +80,11 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
               onChange={(e) => setPage(parseInt(e.target.value))}
               className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#d4af37]"
               style={{
-                background: \linear-gradient(to right, #d4af37 \%, rgba(255,255,255,0.1) \%)\
+                background: `linear-gradient(to right, #d4af37 ${book.total_pages > 0 ? (page / book.total_pages) * 100 : 0}%, rgba(255,255,255,0.1) ${book.total_pages > 0 ? (page / book.total_pages) * 100 : 0}%)`
               }}
             />
             
-            <style jsx>{\
+            <style jsx>{`
               input[type=range]::-webkit-slider-thumb {
                 appearance: none;
                 width: 20px;
@@ -99,7 +99,7 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
               input[type=range]::-webkit-slider-thumb:hover {
                 transform: scale(1.2);
               }
-            \}</style>
+            `}</style>
           </div>
 
           {/* Note */}
