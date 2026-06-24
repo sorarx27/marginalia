@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
@@ -91,7 +91,11 @@ def update_user_taste_profile(profile: schemas.TasteProfileCreate, db: Session =
 from agents import liora
 
 @app.post("/users/me/chat/", response_model=schemas.ChatResponse)
-def chat_with_liora(chat_request: schemas.ChatRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Generate response via DashScope
     reply = liora.generate_liora_response(db=db, user_id=current_user.id, user_message=chat_request.message)
+    
+    # Schedule memory extraction in the background
+    background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, chat_request.message, reply)
+    
     return {"reply": reply}

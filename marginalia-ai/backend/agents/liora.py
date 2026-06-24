@@ -24,6 +24,18 @@ Here is their general reading taste:
 Respond to their message directly. Do not break character.
 """
 
+MEMORY_EXTRACTION_PROMPT = """
+You are a background cognitive processor for Liora, an AI reading companion.
+Your job is to read a recent message from the user and extract any new, permanent facts, preferences, or reading habits they shared.
+Return the result as a JSON array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content' (a concise statement).
+If there is nothing new or permanent to extract (e.g., small talk, greetings), return an empty array [].
+
+Example output:
+[
+  {"memory_type": "preference", "content": "Loves books with unreliable narrators."}
+]
+"""
+
 def generate_liora_response(db: Session, user_id: int, user_message: str) -> str:
     # 1. Fetch user context
     memories = crud.get_memories(db, user_id=user_id, limit=10)
@@ -70,3 +82,40 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
         return response.output.choices[0].message.content
     else:
         return f"*(Liora seems lost in thought...)* Error {response.code}: {response.message}"
+
+def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora_reply: str):
+    import json
+    import schemas
+    
+    if user_message == "__INITIAL_GREETING__":
+        return
+
+    messages = [
+        {"role": "system", "content": MEMORY_EXTRACTION_PROMPT},
+        {"role": "user", "content": f"User's message: {user_message}\nLiora's reply: {liora_reply}"}
+    ]
+
+    response = Generation.call(
+        model='qwen-turbo',
+        messages=messages,
+        result_format='message'
+    )
+
+    if response.status_code == 200:
+        content = response.output.choices[0].message.content
+        try:
+            # Clean up markdown code blocks if any
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+                
+            extracted_memories = json.loads(content)
+            for m in extracted_memories:
+                memory_schema = schemas.MemoryCreate(
+                    memory_type=m.get('memory_type', 'fact'),
+                    content=m.get('content', '')
+                )
+                crud.create_memory(db, memory=memory_schema, user_id=user_id)
+        except Exception as e:
+            print("Error parsing memory extraction:", e)

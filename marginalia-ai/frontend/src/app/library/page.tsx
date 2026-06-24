@@ -13,6 +13,12 @@ interface Message {
   text: string;
 }
 
+interface Memory {
+  id: number;
+  memory_type: string;
+  content: string;
+}
+
 export default function LibraryDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -21,6 +27,7 @@ export default function LibraryDashboard() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,7 +61,26 @@ export default function LibraryDashboard() {
       localStorage.removeItem('token');
       router.push('/');
     });
+
+    fetchMemories();
   }, [router]);
+
+  const fetchMemories = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch('/api/users/me/memories/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMemories(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch memories", e);
+    }
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -110,6 +136,12 @@ export default function LibraryDashboard() {
       const data = await response.json();
       
       setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: data.reply }]);
+      
+      // Memory extraction takes a bit, so wait 3 seconds before fetching new memories
+      setTimeout(() => {
+        fetchMemories();
+      }, 3000);
+      
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages((prev) => [...prev, { id: Date.now().toString() + 'e', role: 'liora', text: "*(The connection to the ethereal plane seems unstable...)*" }]);
@@ -318,17 +350,19 @@ export default function LibraryDashboard() {
             
             {/* Ethereal Memories */}
             <div className="space-y-4">
-              <div className="group relative p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all hover:shadow-[0_0_15px_rgba(212,175,55,0.05)] cursor-default overflow-hidden animate-[float_6s_ease-in-out_infinite]">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#d4af37]/60 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-                <p className="text-[13px] text-[#f3efe0] mb-1.5 font-serif italic leading-relaxed">"Enjoys slow-burn pacing"</p>
-                <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-wide">Inferred from Piranesi</p>
-              </div>
-              
-              <div className="group relative p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all hover:shadow-[0_0_15px_rgba(212,175,55,0.05)] cursor-default overflow-hidden animate-[float_6s_ease-in-out_infinite_1s]">
-                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#d4af37]/60 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
-                <p className="text-[13px] text-[#f3efe0] mb-1.5 font-serif italic leading-relaxed">"Avoids gratuitous violence"</p>
-                <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-wide">Stated explicitly</p>
-              </div>
+              {memories.length === 0 ? (
+                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 cursor-default">
+                  <p className="text-[13px] text-[#e6dfd5]/40 font-serif italic text-center">Liora is observing you...</p>
+                </div>
+              ) : (
+                memories.map((mem, idx) => (
+                  <div key={mem.id} className={`group relative p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all hover:shadow-[0_0_15px_rgba(212,175,55,0.05)] cursor-default overflow-hidden animate-[float_6s_ease-in-out_infinite]`} style={{ animationDelay: `${idx * 0.5}s` }}>
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#d4af37]/60 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
+                    <p className="text-[13px] text-[#f3efe0] mb-1.5 font-serif italic leading-relaxed">"{mem.content}"</p>
+                    <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-wide">{mem.memory_type}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
