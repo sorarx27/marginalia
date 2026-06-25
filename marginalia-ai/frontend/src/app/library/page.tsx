@@ -643,7 +643,7 @@ export default function LibraryDashboard() {
         <BookProgressModal 
           book={selectedProgressBook}
           onClose={() => setSelectedProgressBook(null)}
-          onUpdateProgress={handleUpdateProgress}
+          onSave={handleUpdateProgress}
         />
       )}
 
