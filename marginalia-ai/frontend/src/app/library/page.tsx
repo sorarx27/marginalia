@@ -8,6 +8,7 @@ import WhisperMessage from "@/components/WhisperMessage";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import BookSearchModal from "@/components/BookSearchModal";
 import BookProgressModal from "@/components/BookProgressModal";
+import RecommendationModal from "@/components/RecommendationModal";
 
 interface Message {
   id: string;
@@ -30,6 +31,8 @@ interface Book {
   current_page: number;
   cover_image_url: string;
   status: string;
+  recommended_by_liora: boolean;
+  liora_note: string | null;
 }
 
 export default function LibraryDashboard() {
@@ -44,6 +47,7 @@ export default function LibraryDashboard() {
   const [activeBooks, setActiveBooks] = useState<Book[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [selectedProgressBook, setSelectedProgressBook] = useState<Book | null>(null);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Book | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -177,6 +181,46 @@ export default function LibraryDashboard() {
       }
     } catch (e) {
       console.error("Failed to update progress", e);
+    }
+  };
+
+  const handleAcceptRecommendation = async (bookId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch(`/api/users/me/books/${bookId}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ recommended_by_liora: false })
+      });
+      if (res.ok) {
+        setSelectedRecommendation(null);
+        fetchBooks();
+      }
+    } catch (e) {
+      console.error("Failed to accept recommendation", e);
+    }
+  };
+
+  const handleDeclineRecommendation = async (bookId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const res = await fetch(`/api/users/me/books/${bookId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setSelectedRecommendation(null);
+        fetchBooks();
+      }
+    } catch (e) {
+      console.error("Failed to decline recommendation", e);
     }
   };
 
@@ -485,27 +529,58 @@ export default function LibraryDashboard() {
             </h3>
             {/* Living Book */}
             {activeBooks.length > 0 ? (
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 {activeBooks.map(book => (
-                  <LivingBook 
-                    key={book.id}
-                    title={book.title} 
-                    author={book.author} 
-                    coverImageUrl={book.cover_image_url}
-                    currentPage={book.current_page}
-                    totalPages={book.total_pages}
-                    onClick={() => setSelectedProgressBook(book)}
-                  />
+                  <div 
+                    key={book.id} 
+                    className={`group relative flex flex-col items-center gap-3 cursor-pointer ${book.recommended_by_liora ? 'animate-pulse' : ''}`}
+                    onClick={() => book.recommended_by_liora ? setSelectedRecommendation(book) : setSelectedProgressBook(book)}
+                  >
+                    <div className={`relative w-28 h-40 rounded shadow-2xl border ${book.recommended_by_liora ? 'border-[#d4af37]' : 'border-white/10 group-hover:border-[#d4af37]/50'} transition-colors overflow-hidden`}>
+                      {book.cover_image_url ? (
+                        <Image src={book.cover_image_url} alt={book.title} fill className="object-cover" />
+                      ) : (
+                        <div className={`absolute inset-0 bg-gradient-to-tr ${book.recommended_by_liora ? 'from-[#d4af37]/40' : 'from-[#d4af37]/20'} to-transparent flex items-center justify-center p-2 text-center`}>
+                          <span className="text-[10px] font-serif text-[#d4af37]/70 font-semibold">{book.title}</span>
+                        </div>
+                      )}
+                      {/* Shimmer overlay for recommendations */}
+                      {book.recommended_by_liora && (
+                        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-[#d4af37]/30 to-transparent mix-blend-overlay shimmer-animation" />
+                      )}
+                      
+                      {/* Progress Bar overlay */}
+                      {!book.recommended_by_liora && book.total_pages > 0 && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
+                          <div 
+                            className="h-full bg-[#d4af37]" 
+                            style={{ width: `${Math.min(100, Math.max(0, (book.current_page / book.total_pages) * 100))}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-center px-2">
+                      <h3 className="text-xs font-serif text-[#f3efe0] font-medium truncate w-28 flex items-center justify-center gap-1">
+                        {book.recommended_by_liora && (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-[#d4af37]">
+                            <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                        {book.title}
+                      </h3>
+                      <p className="text-[10px] text-[#e6dfd5]/50 truncate w-28">{book.author}</p>
+                    </div>
+                  </div>
                 ))}
                 
                 <button 
                   onClick={() => setIsSearchModalOpen(true)}
-                  className="w-full py-3 rounded-xl border border-dashed border-[#d4af37]/30 text-[#d4af37]/70 hover:text-[#d4af37] hover:bg-[#d4af37]/5 transition-colors font-serif text-sm flex items-center justify-center gap-2"
+                  className="w-full h-40 rounded-xl border border-dashed border-[#d4af37]/30 text-[#d4af37]/70 hover:text-[#d4af37] hover:bg-[#d4af37]/5 transition-colors font-serif text-sm flex items-center justify-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
-                  Add another book
+                  Add
                 </button>
               </div>
             ) : (
@@ -533,6 +608,17 @@ export default function LibraryDashboard() {
             50% { transform: translateY(-4px); }
             100% { transform: translateY(0px); }
           }
+          @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(200%) rotate(45deg); }
+          }
+          .shimmer-animation {
+            animation: shimmer 3s infinite linear;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+          }
         `}</style>
 
       </div>
@@ -557,7 +643,16 @@ export default function LibraryDashboard() {
         <BookProgressModal 
           book={selectedProgressBook}
           onClose={() => setSelectedProgressBook(null)}
-          onSave={handleUpdateProgress}
+          onUpdateProgress={handleUpdateProgress}
+        />
+      )}
+
+      {selectedRecommendation && (
+        <RecommendationModal
+          book={selectedRecommendation}
+          onClose={() => setSelectedRecommendation(null)}
+          onAccept={handleAcceptRecommendation}
+          onDecline={handleDeclineRecommendation}
         />
       )}
     </div>

@@ -29,21 +29,24 @@ You are a background cognitive processor for Liora, an AI reading companion.
 Your job is to read a recent message from the user and extract:
 1. Any new, permanent facts, preferences, or reading habits they shared (as memories).
 2. Any books they explicitly mention having read in the past, or books they mention currently reading.
+3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste. Only do this if it's a brilliant match.
 
-Return the result as a JSON object with two keys: 'memories' and 'books'.
-- 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content' (a concise statement).
-- 'books': An array of objects with 'title', 'author' (if mentioned, else null), and 'status' (must be either "Read" or "Currently Reading").
+Return the result as a JSON object with up to three keys: 'memories', 'books', and 'proactive_recommendation'.
+- 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content'.
+- 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read" or "Currently Reading").
+- 'proactive_recommendation' (optional): An object with 'title', 'author', and 'note' (a personalized message from Liora explaining why she recommends it).
 
-If there is nothing new or permanent to extract, return empty arrays.
+If there is nothing new to extract, return empty arrays. If no recommendation is warranted, omit the key or set it to null.
 
 Example output:
 {
-  "memories": [
-    {"memory_type": "preference", "content": "Loves books with unreliable narrators."}
-  ],
-  "books": [
-    {"title": "The Martian", "author": "Andy Weir", "status": "Read"}
-  ]
+  "memories": [{"memory_type": "preference", "content": "Loves hard sci-fi with political intrigue."}],
+  "books": [],
+  "proactive_recommendation": {
+    "title": "The Expanse",
+    "author": "James S.A. Corey",
+    "note": "Based on your love for hard sci-fi and politics, I pulled this from the archives. I think you'll find the solar system dynamics fascinating."
+  }
 }
 """
 
@@ -171,5 +174,40 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                     )
                     crud.create_book(db, book=book_schema, user_id=user_id)
                     
+                    
+            # Handle proactive recommendation
+            proactive_rec = extracted_data.get("proactive_recommendation")
+            if proactive_rec and proactive_rec.get("title"):
+                title = proactive_rec.get("title")
+                author = proactive_rec.get("author", "")
+                note = proactive_rec.get("note", "I thought you might enjoy this.")
+                
+                query = f"{title} {author}".strip()
+                search_results = google_books.search_books(query)
+                
+                cover_image_url = None
+                total_pages = 0
+                if search_results:
+                    first_result = search_results[0]
+                    db_title = first_result.get("title", title)
+                    db_author = ", ".join(first_result.get("authors", [])) or author
+                    cover_image_url = first_result.get("cover_image_url")
+                    total_pages = first_result.get("page_count", 0)
+                else:
+                    db_title = title
+                    db_author = author
+                    
+                book_schema = schemas.BookCreate(
+                    title=db_title,
+                    author=db_author,
+                    cover_image_url=cover_image_url,
+                    total_pages=total_pages,
+                    status="To Read",
+                    current_page=0,
+                    recommended_by_liora=True,
+                    liora_note=note
+                )
+                crud.create_book(db, book=book_schema, user_id=user_id)
+                
         except Exception as e:
             print("Error parsing memory extraction:", e)

@@ -30,6 +30,8 @@ class BookBase(BaseModel):
     current_page: int = 0
     status: str = "To Read"
     rating: Optional[float] = None
+    recommended_by_liora: bool = False
+    liora_note: Optional[str] = None
 
 class BookCreate(BookBase):
     pass
@@ -39,6 +41,7 @@ class BookUpdate(BaseModel):
     status: Optional[str] = None
     rating: Optional[float] = None
     note: Optional[str] = None
+    recommended_by_liora: Optional[bool] = None
 
 class BookResponse(BookBase):
     id: int

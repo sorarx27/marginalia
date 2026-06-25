@@ -43,6 +43,8 @@ class Book(Base):
     current_page = Column(Integer, default=0)
     status = Column(String(50), default="To Read") # To Read, Reading, Finished
     rating = Column(Float, nullable=True)
+    recommended_by_liora = Column(Boolean, default=False)
+    liora_note = Column(Text, nullable=True)
     
     owner = relationship("User", back_populates="books")
     reading_sessions = relationship("ReadingSession", back_populates="book")
