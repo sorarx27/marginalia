@@ -46,6 +46,7 @@ class BookUpdate(BaseModel):
 class BookResponse(BookBase):
     id: int
     owner_id: int
+    echo: Optional[str] = None
 
     class Config:
         from_attributes = True

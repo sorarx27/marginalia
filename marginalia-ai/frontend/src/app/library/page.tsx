@@ -9,6 +9,7 @@ import OnboardingFlow from "@/components/OnboardingFlow";
 import BookSearchModal from "@/components/BookSearchModal";
 import BookProgressModal from "@/components/BookProgressModal";
 import RecommendationModal from "@/components/RecommendationModal";
+import EchoModal from "@/components/EchoModal";
 
 interface Message {
   id: string;
@@ -48,6 +49,7 @@ export default function LibraryDashboard() {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [selectedProgressBook, setSelectedProgressBook] = useState<Book | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] = useState<Book | null>(null);
+  const [echoMessage, setEchoMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -172,11 +174,15 @@ export default function LibraryDashboard() {
         body: JSON.stringify({ current_page: newPage, note: note, status: newStatus })
       });
       if (res.ok) {
+        const data = await res.json();
         setSelectedProgressBook(null);
         fetchBooks();
         if (note) {
           // A note triggers memory extraction. Wait a bit then fetch memories
           setTimeout(() => fetchMemories(), 3000);
+        }
+        if (data.echo) {
+          setEchoMessage(data.echo);
         }
       }
     } catch (e) {
@@ -653,6 +659,13 @@ export default function LibraryDashboard() {
           onClose={() => setSelectedRecommendation(null)}
           onAccept={handleAcceptRecommendation}
           onDecline={handleDeclineRecommendation}
+        />
+      )}
+
+      {echoMessage && (
+        <EchoModal 
+          echo={echoMessage} 
+          onClose={() => setEchoMessage(null)} 
         />
       )}
     </div>

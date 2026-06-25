@@ -77,11 +77,16 @@ def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, backgrou
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
         
+    echo_msg = None
     if book_update.note:
         context_msg = f"I just read up to page {db_book.current_page} of {db_book.title}. My thoughts: {book_update.note}"
         background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, context_msg, "Thank you for sharing your thoughts on this book.")
+        echo_msg = liora.generate_echo(db_book.title, db_book.author or "Unknown Author", book_update.note)
         
-    return db_book
+    # Convert ORM object to Pydantic model so we can attach the echo
+    response_data = schemas.BookResponse.model_validate(db_book)
+    response_data.echo = echo_msg
+    return response_data
 
 @app.get("/books/search")
 def search_books_api(q: str, current_user: models.User = Depends(auth.get_current_user)):

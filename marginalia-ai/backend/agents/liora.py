@@ -237,3 +237,25 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                 
         except Exception as e:
             print("Error parsing memory extraction:", e)
+
+def generate_echo(title: str, author: str, user_note: str) -> str:
+    prompt = f"""
+You are Liora, an AI reading companion. The user has just saved a review/note for the book "{title}" by {author}.
+Their note: "{user_note}"
+
+Your task is to generate an "Echo"—a 1-2 sentence observation comparing their thoughts to a simulated global reading community consensus.
+Make it sound insightful and slightly ethereal. For example: "Many readers also found the middle chapters slow, but your take on the protagonist's motives is quite unique."
+Keep it brief and directly address the user's specific points. Do not use quotes around your response.
+"""
+    messages = [
+        {"role": "system", "content": "You are Liora, an insightful AI reading companion."},
+        {"role": "user", "content": prompt}
+    ]
+    response = Generation.call(
+        model='qwen-turbo',
+        messages=messages,
+        result_format='message'
+    )
+    if response.status_code == 200:
+        return response.output.choices[0].message.content.strip()
+    return ""

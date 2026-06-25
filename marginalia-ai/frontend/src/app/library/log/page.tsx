@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BookSearchModal from "@/components/BookSearchModal";
 import BookReviewModal from "@/components/BookReviewModal";
+import EchoModal from "@/components/EchoModal";
 
 interface Book {
   id: number;
@@ -24,6 +25,7 @@ export default function ReadingLog() {
   const [readBooks, setReadBooks] = useState<Book[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [selectedReviewBook, setSelectedReviewBook] = useState<Book | null>(null);
+  const [echoMessage, setEchoMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -97,8 +99,12 @@ export default function ReadingLog() {
         body: JSON.stringify({ rating: rating, note: note })
       });
       if (res.ok) {
+        const data = await res.json();
         setSelectedReviewBook(null);
         fetchBooks();
+        if (data.echo) {
+          setEchoMessage(data.echo);
+        }
       }
     } catch (e) {
       console.error("Failed to update review", e);
@@ -204,6 +210,13 @@ export default function ReadingLog() {
           book={selectedReviewBook}
           onClose={() => setSelectedReviewBook(null)}
           onSave={handleUpdateReview}
+        />
+      )}
+
+      {echoMessage && (
+        <EchoModal 
+          echo={echoMessage} 
+          onClose={() => setEchoMessage(null)} 
         />
       )}
 
