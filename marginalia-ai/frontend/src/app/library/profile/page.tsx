@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface Memory {
   id: number;
@@ -56,6 +57,15 @@ export default function TasteProfileDashboard() {
   const totalPagesRead = books.reduce((acc, book) => acc + book.current_page, 0);
   const booksCompleted = books.filter(b => b.current_page > 0 && b.current_page === b.total_pages).length;
   const currentlyReading = books.length - booksCompleted;
+
+  // Radar Chart Data
+  const radarData = [
+    { subject: 'Complexity', A: user?.taste_profile?.complexity_score || 50, fullMark: 100 },
+    { subject: 'Worldbuilding', A: user?.taste_profile?.worldbuilding_score || 50, fullMark: 100 },
+    { subject: 'Character Focus', A: user?.taste_profile?.character_score || 50, fullMark: 100 },
+    { subject: 'Dark Tone', A: user?.taste_profile?.tone_score || 50, fullMark: 100 },
+    { subject: 'Pacing', A: user?.taste_profile?.pacing_score || 50, fullMark: 100 },
+  ];
 
   return (
     <div className="relative min-h-[100dvh] w-full bg-[#0e0c0d] text-[#f7f5f3] font-sans antialiased overflow-x-hidden">
@@ -118,18 +128,39 @@ export default function TasteProfileDashboard() {
               </div>
             </section>
 
-            {/* Identity Matrix */}
-            <section className="p-6 rounded-2xl bg-[#161314]/80 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden">
+            {/* Identity Matrix (Radar Chart) */}
+            <section className="p-6 rounded-2xl bg-[#161314]/80 backdrop-blur-xl border border-white/5 shadow-2xl relative overflow-hidden flex flex-col items-center">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#d4af37]/5 blur-[40px] pointer-events-none" />
-              <h2 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-6 flex items-center gap-2">
+              <h2 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-2 w-full flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-[#d4af37]/70">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
                 </svg>
-                Core Identity
+                Identity Matrix
               </h2>
               
-              <div className="space-y-5">
+              <div className="w-full h-64 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                    <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(230,223,213,0.6)', fontSize: 10, fontFamily: 'serif' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    <Radar
+                      name="Taste"
+                      dataKey="A"
+                      stroke="#d4af37"
+                      strokeWidth={2}
+                      fill="#d4af37"
+                      fillOpacity={0.4}
+                      isAnimationActive={true}
+                      animationDuration={1500}
+                      animationEasing="ease-out"
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="w-full mt-6 space-y-4">
                 <div>
                   <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-widest mb-2">Favorite Genres</p>
                   <div className="flex flex-wrap gap-2">
@@ -141,13 +172,6 @@ export default function TasteProfileDashboard() {
                       <span className="text-sm text-[#e6dfd5]/40 italic">Not defined yet</span>
                     )}
                   </div>
-                </div>
-                
-                <div>
-                  <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-widest mb-2">Avoids</p>
-                  <p className="text-sm text-[#f3efe0] font-serif leading-relaxed">
-                    {user?.taste_profile?.dislikes || <span className="text-[#e6dfd5]/40 italic">Not defined yet</span>}
-                  </p>
                 </div>
               </div>
             </section>

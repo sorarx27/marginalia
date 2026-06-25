@@ -55,6 +55,11 @@ class TasteProfileBase(BaseModel):
     favorite_genres: Optional[str] = None
     dislikes: Optional[str] = None
     pacing_preference: Optional[str] = None
+    complexity_score: int = 50
+    worldbuilding_score: int = 50
+    character_score: int = 50
+    tone_score: int = 50
+    pacing_score: int = 50
 
 class TasteProfileCreate(TasteProfileBase):
     pass

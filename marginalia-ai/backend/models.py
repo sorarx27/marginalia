@@ -26,6 +26,11 @@ class TasteProfile(Base):
     favorite_genres = Column(String(200)) # Stored as comma-separated
     dislikes = Column(Text)
     pacing_preference = Column(String(50))
+    complexity_score = Column(Integer, default=50) # 0: Simple -> 100: Complex
+    worldbuilding_score = Column(Integer, default=50) # 0: Grounded -> 100: Expansive
+    character_score = Column(Integer, default=50) # 0: Plot-Driven -> 100: Character-Driven
+    tone_score = Column(Integer, default=50) # 0: Lighthearted -> 100: Dark/Grim
+    pacing_score = Column(Integer, default=50) # 0: Slow Burn -> 100: Fast-Paced
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = relationship("User", back_populates="taste_profile")

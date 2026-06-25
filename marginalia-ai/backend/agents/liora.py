@@ -30,13 +30,15 @@ Your job is to read a recent message from the user and extract:
 1. Any new, permanent facts, preferences, or reading habits they shared (as memories).
 2. Any books they explicitly mention having read in the past, or books they mention currently reading.
 3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste. Only do this if it's a brilliant match.
+4. ANY TIME the user shares an opinion on a book, extract subtle shifts in their taste profile across 5 axes (0-100 scale).
 
-Return the result as a JSON object with up to three keys: 'memories', 'books', and 'proactive_recommendation'.
+Return the result as a JSON object with up to four keys: 'memories', 'books', 'proactive_recommendation', and 'taste_shifts'.
 - 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content'.
 - 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read" or "Currently Reading").
 - 'proactive_recommendation' (optional): An object with 'title', 'author', and 'note' (a personalized message from Liora explaining why she recommends it).
+- 'taste_shifts' (optional): An object with 5 keys ('complexity_score', 'worldbuilding_score', 'character_score', 'tone_score', 'pacing_score'). ONLY include the keys that the user's message directly influences. Values should be integers between 0 and 100 representing the user's PREFERRED state (e.g. if they say "I love complex magic systems", 'worldbuilding_score' might be 85).
 
-If there is nothing new to extract, return empty arrays. If no recommendation is warranted, omit the key or set it to null.
+If there is nothing new to extract, return empty arrays. If no recommendation or shift is warranted, omit the key or set it to null.
 
 Example output:
 {
@@ -46,6 +48,10 @@ Example output:
     "title": "The Expanse",
     "author": "James S.A. Corey",
     "note": "Based on your love for hard sci-fi and politics, I pulled this from the archives. I think you'll find the solar system dynamics fascinating."
+  },
+  "taste_shifts": {
+    "complexity_score": 80,
+    "worldbuilding_score": 90
   }
 }
 """
@@ -208,6 +214,26 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                     liora_note=note
                 )
                 crud.create_book(db, book=book_schema, user_id=user_id)
+                
+            # Handle taste shifts
+            taste_shifts = extracted_data.get("taste_shifts")
+            if taste_shifts:
+                user = crud.get_user(db, user_id=user_id)
+                if user and user.taste_profile:
+                    update_data = {}
+                    for key in ["complexity_score", "worldbuilding_score", "character_score", "tone_score", "pacing_score"]:
+                        if key in taste_shifts:
+                            current_val = getattr(user.taste_profile, key, 50)
+                            shift_val = taste_shifts[key]
+                            # Blend the new value with the old value (e.g. 70% old, 30% new) to make it gradual
+                            new_val = int((current_val * 0.7) + (shift_val * 0.3))
+                            # Ensure it stays within bounds
+                            new_val = max(0, min(100, new_val))
+                            update_data[key] = new_val
+                    
+                    if update_data:
+                        profile_schema = schemas.TasteProfileCreate(**update_data)
+                        crud.update_taste_profile(db, user_id=user_id, profile_update=profile_schema)
                 
         except Exception as e:
             print("Error parsing memory extraction:", e)
