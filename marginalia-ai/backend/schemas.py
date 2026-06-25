@@ -105,3 +105,8 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+# --- Speak Schemas ---
+class SpeakRequest(BaseModel):
+    text: str
+

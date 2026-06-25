@@ -51,6 +51,76 @@ export default function LibraryDashboard() {
   const [selectedRecommendation, setSelectedRecommendation] = useState<Book | null>(null);
   const [echoMessage, setEchoMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Liora Speech States & Refs
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const chatAudioRef = useRef<HTMLAudioElement | null>(null);
+  const chatAudioUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (chatAudioRef.current) {
+        chatAudioRef.current.pause();
+      }
+      if (chatAudioUrlRef.current) {
+        URL.revokeObjectURL(chatAudioUrlRef.current);
+      }
+    };
+  }, []);
+
+  const handleSpeakMessage = async (messageId: string, text: string) => {
+    if (chatAudioRef.current && playingMessageId === messageId) {
+      chatAudioRef.current.pause();
+      setPlayingMessageId(null);
+      return;
+    }
+
+    // Stop currently playing audio
+    if (chatAudioRef.current) {
+      chatAudioRef.current.pause();
+    }
+    setPlayingMessageId(messageId);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/me/speak', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ text })
+      });
+
+      if (!response.ok) throw new Error('Failed to fetch voice');
+
+      const blob = await response.blob();
+      
+      // Clean up previous URL
+      if (chatAudioUrlRef.current) {
+        URL.revokeObjectURL(chatAudioUrlRef.current);
+      }
+      
+      const url = URL.createObjectURL(blob);
+      chatAudioUrlRef.current = url;
+
+      const audio = new Audio(url);
+      chatAudioRef.current = audio;
+
+      audio.onended = () => {
+        setPlayingMessageId(null);
+      };
+      audio.onerror = () => {
+        setPlayingMessageId(null);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.warn("Liora's voice could not be loaded:", error);
+      setPlayingMessageId(null);
+    }
+  };
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -300,6 +370,22 @@ export default function LibraryDashboard() {
 
   return (
     <div className="relative h-[100dvh] w-full bg-[#0e0c0d] overflow-hidden text-[#f7f5f3] font-sans antialiased">
+      {/* CSS Keyframes for Bounce Equalizer */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes tts-bounce {
+          0%, 100% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1.1); }
+        }
+        .eq-bar {
+          transform-origin: bottom;
+          animation: tts-bounce 1s ease-in-out infinite;
+        }
+        .eq-bar-1 { animation-delay: 0.1s; }
+        .eq-bar-2 { animation-delay: 0.3s; }
+        .eq-bar-3 { animation-delay: 0.2s; }
+        .eq-bar-4 { animation-delay: 0.4s; }
+      `}} />
+
       {/* Entry Flash Fade Out (Catches the transition from homepage) */}
       <div className={`absolute inset-0 z-[100] bg-[#f3efe0] pointer-events-none transition-opacity duration-[2000ms] ease-in-out ${mounted ? 'opacity-0' : 'opacity-100'}`} />
 
@@ -404,13 +490,42 @@ export default function LibraryDashboard() {
                     </div>
                   </div>
                 )}
-                <div className={`p-5 rounded-2xl shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_10px_30px_-10px_rgba(0,0,0,0.5)] ${
+                <div className={`p-5 rounded-2xl shadow-[inset_1px_1px_0_rgba(255,255,255,0.05),0_10px_30px_-10px_rgba(0,0,0,0.5)] relative group/bubble ${
                   msg.role === 'user' 
                     ? 'bg-[#d4af37]/10 border border-[#d4af37]/20 text-[#f3efe0] rounded-tr-none' 
                     : 'bg-[#161314]/80 backdrop-blur-md border border-white/5 rounded-tl-none'
                 }`}>
                   {msg.role === 'liora' ? (
-                    <WhisperMessage text={msg.text} delay={0} />
+                    <div className="flex flex-col gap-2">
+                      <div className="pr-4">
+                        <WhisperMessage text={msg.text} delay={0} />
+                      </div>
+                      
+                      {/* Read Aloud Button */}
+                      <button 
+                        onClick={() => handleSpeakMessage(msg.id, msg.text)}
+                        className={`absolute right-3 bottom-3 p-1.5 rounded-full bg-[#0e0c0d]/60 border border-[#d4af37]/20 text-[#d4af37] flex items-center justify-center transition-all ${
+                          playingMessageId === msg.id 
+                            ? 'opacity-100 scale-100 bg-[#d4af37]/10 border-[#d4af37]/40' 
+                            : 'opacity-0 group-hover/bubble:opacity-100 scale-95 hover:scale-105 hover:bg-[#d4af37]/10'
+                        }`}
+                        title={playingMessageId === msg.id ? "Pause speech" : "Read aloud"}
+                      >
+                        {playingMessageId === msg.id ? (
+                          /* Equalizer Animation inside button */
+                          <div className="flex items-end gap-[1.5px] h-3.5 w-3.5 px-0.5 pb-0.5">
+                            <span className="w-[1.5px] h-full bg-[#d4af37] eq-bar eq-bar-1 rounded-full" />
+                            <span className="w-[1.5px] h-full bg-[#d4af37] eq-bar eq-bar-2 rounded-full" />
+                            <span className="w-[1.5px] h-full bg-[#d4af37] eq-bar eq-bar-3 rounded-full" />
+                          </div>
+                        ) : (
+                          /* Speaker Icon */
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   ) : (
                     <p className="font-serif leading-relaxed text-[15px]">{msg.text}</p>
                   )}

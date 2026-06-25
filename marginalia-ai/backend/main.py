@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-import models, schemas, crud, auth, google_books
+import io
+import models, schemas, crud, auth, google_books, tts
 from database import engine, get_db
 from agents import liora
 from fastapi.security import OAuth2PasswordRequestForm
@@ -120,3 +122,16 @@ def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: Backgro
     background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, chat_request.message, reply)
     
     return {"reply": reply}
+
+# --- Speech Endpoints ---
+@app.post("/users/me/speak")
+def liora_speak(speak_request: schemas.SpeakRequest, current_user: models.User = Depends(auth.get_current_user)):
+    try:
+        audio_data = tts.synthesize_speech(speak_request.text)
+        return StreamingResponse(io.BytesIO(audio_data), media_type="audio/mpeg")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Speech synthesis failed: {str(e)}"
+        )
+
