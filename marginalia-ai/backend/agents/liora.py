@@ -26,14 +26,25 @@ Respond to their message directly. Do not break character.
 
 MEMORY_EXTRACTION_PROMPT = """
 You are a background cognitive processor for Liora, an AI reading companion.
-Your job is to read a recent message from the user and extract any new, permanent facts, preferences, or reading habits they shared.
-Return the result as a JSON array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content' (a concise statement).
-If there is nothing new or permanent to extract (e.g., small talk, greetings), return an empty array [].
+Your job is to read a recent message from the user and extract:
+1. Any new, permanent facts, preferences, or reading habits they shared (as memories).
+2. Any books they explicitly mention having read in the past, or books they mention currently reading.
+
+Return the result as a JSON object with two keys: 'memories' and 'books'.
+- 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content' (a concise statement).
+- 'books': An array of objects with 'title', 'author' (if mentioned, else null), and 'status' (must be either "Read" or "Currently Reading").
+
+If there is nothing new or permanent to extract, return empty arrays.
 
 Example output:
-[
-  {"memory_type": "preference", "content": "Loves books with unreliable narrators."}
-]
+{
+  "memories": [
+    {"memory_type": "preference", "content": "Loves books with unreliable narrators."}
+  ],
+  "books": [
+    {"title": "The Martian", "author": "Andy Weir", "status": "Read"}
+  ]
+}
 """
 
 def generate_liora_response(db: Session, user_id: int, user_message: str) -> str:
@@ -110,12 +121,55 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
                 
-            extracted_memories = json.loads(content)
+            extracted_data = json.loads(content)
+            
+            # Handle old array format fallback or new object format
+            if isinstance(extracted_data, list):
+                extracted_memories = extracted_data
+                extracted_books = []
+            else:
+                extracted_memories = extracted_data.get("memories", [])
+                extracted_books = extracted_data.get("books", [])
+
             for m in extracted_memories:
                 memory_schema = schemas.MemoryCreate(
                     memory_type=m.get('memory_type', 'fact'),
                     content=m.get('content', '')
                 )
                 crud.create_memory(db, memory=memory_schema, user_id=user_id)
+                
+            # Handle extracted books
+            import google_books
+            for b in extracted_books:
+                title = b.get('title')
+                author = b.get('author', '')
+                status = b.get('status', 'Read')
+                if title:
+                    query = f"{title} {author}".strip()
+                    search_results = google_books.search_books(query)
+                    
+                    cover_image_url = None
+                    total_pages = 0
+                    if search_results:
+                        first_result = search_results[0]
+                        # Use the result's title and author for accuracy if possible
+                        db_title = first_result.get("title", title)
+                        db_author = ", ".join(first_result.get("authors", [])) or author
+                        cover_image_url = first_result.get("cover_image_url")
+                        total_pages = first_result.get("page_count", 0)
+                    else:
+                        db_title = title
+                        db_author = author
+                        
+                    book_schema = schemas.BookCreate(
+                        title=db_title,
+                        author=db_author,
+                        cover_image_url=cover_image_url,
+                        total_pages=total_pages,
+                        status=status,
+                        current_page=0
+                    )
+                    crud.create_book(db, book=book_schema, user_id=user_id)
+                    
         except Exception as e:
             print("Error parsing memory extraction:", e)

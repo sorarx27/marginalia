@@ -109,7 +109,7 @@ export default function LibraryDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        setActiveBooks(data);
+        setActiveBooks(data.filter((b: Book) => b.status !== 'Read'));
       }
     } catch (e) {
       console.error("Failed to fetch books", e);
@@ -149,13 +149,23 @@ export default function LibraryDashboard() {
       const token = localStorage.getItem('token');
       if (!token) return;
       
+      let newStatus = 'To Read';
+      if (newPage > 0) {
+        // If we know the total pages and we hit it, mark as Read. Otherwise, Currently Reading.
+        if (selectedProgressBook && selectedProgressBook.total_pages > 0 && newPage >= selectedProgressBook.total_pages) {
+          newStatus = 'Read';
+        } else {
+          newStatus = 'Currently Reading';
+        }
+      }
+
       const res = await fetch(`/api/users/me/books/${bookId}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}` 
         },
-        body: JSON.stringify({ current_page: newPage, note: note })
+        body: JSON.stringify({ current_page: newPage, note: note, status: newStatus })
       });
       if (res.ok) {
         setSelectedProgressBook(null);
@@ -285,7 +295,10 @@ export default function LibraryDashboard() {
               </svg>
               Chat with Liora
             </button>
-            <button className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#e6dfd5]/60 hover:text-[#e6dfd5] hover:bg-white/5 transition-all text-sm font-medium">
+            <button 
+              onClick={() => router.push('/library/log')}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#e6dfd5]/60 hover:text-[#e6dfd5] hover:bg-white/5 transition-all text-sm font-medium"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
               </svg>
@@ -409,7 +422,10 @@ export default function LibraryDashboard() {
             </svg>
             <span className="text-[10px] font-medium">Chat</span>
           </button>
-          <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
+          <button 
+            onClick={() => router.push('/library/log')}
+            className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
             </svg>
