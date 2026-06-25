@@ -75,7 +75,7 @@ export default function RecommendationModal({ book, onClose, onAccept, onDecline
         </div>
       </div>
       
-      <style dangerouslySetInnerHTML={{__html: 
+      <style dangerouslySetInnerHTML={{__html: `
         @keyframes shimmer {
           0% { transform: translateX(-100%) rotate(45deg); }
           100% { transform: translateX(200%) rotate(45deg); }
@@ -87,7 +87,7 @@ export default function RecommendationModal({ book, onClose, onAccept, onDecline
           top: -50%;
           left: -50%;
         }
-      }} />
+      `}} />
     </div>
   );
 }
