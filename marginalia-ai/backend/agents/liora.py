@@ -141,6 +141,11 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": "Hello. I am a new reader in your library. Please introduce yourself and welcome me, referencing my taste profile if you can."}
         ]
+    elif user_message == "__WELCOME_BACK__":
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": "I am returning to the library. Please welcome me back dynamically and warmly. You should reference a book currently on my desk or ask me about my reading progress if I have an active book, otherwise briefly mention my taste profile."}
+        ]
     else:
         messages = [{"role": "system", "content": system_prompt}]
         
@@ -168,7 +173,7 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
     import json
     import schemas
     
-    if user_message == "__INITIAL_GREETING__":
+    if user_message in ["__INITIAL_GREETING__", "__WELCOME_BACK__"]:
         return
 
     messages = [

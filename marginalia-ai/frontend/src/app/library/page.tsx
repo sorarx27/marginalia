@@ -121,6 +121,36 @@ export default function LibraryDashboard() {
       setPlayingMessageId(null);
     }
   };
+  const triggerWelcomeBackGreeting = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/me/chat/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: '__WELCOME_BACK__' }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMessages([{ id: Date.now().toString(), role: 'liora', text: data.reply }]);
+      } else {
+        setMessages([
+          { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you." }
+        ]);
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages([
+        { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you." }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -143,10 +173,7 @@ export default function LibraryDashboard() {
       if (!data.taste_profile || !data.taste_profile.favorite_genres) {
         setNeedsOnboarding(true);
       } else {
-        // If they are returning, push a standard welcome back
-        setMessages([
-          { id: '1', role: 'liora', text: "Welcome back. It's so lovely to see you." }
-        ]);
+        triggerWelcomeBackGreeting();
       }
       setMounted(true);
     })
@@ -304,6 +331,57 @@ export default function LibraryDashboard() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const getConversationStarters = () => {
+    const starters = [];
+    if (activeBooks.length > 0) {
+      const book = activeBooks[0];
+      starters.push(`What are other readers saying about "${book.title}"?`);
+      starters.push(`Help me understand the themes of "${book.title}".`);
+    } else {
+      starters.push("Recommend me a book based on my reading taste.");
+    }
+    starters.push("Can you share a beautiful literary quote with me?");
+    starters.push("Help me find my next magical read.");
+    return starters;
+  };
+
+  const handleSendStarter = async (starterText: string) => {
+    if (isLoading) return;
+    setInput('');
+    
+    const newMessage: Message = { id: Date.now().toString(), role: 'user', text: starterText };
+    setMessages((prev) => [...prev, newMessage]);
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/users/me/chat/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: starterText }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      const data = await response.json();
+      
+      setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: data.reply }]);
+      setTimeout(() => {
+        fetchMemories();
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error sending starter:', error);
+      setMessages((prev) => [...prev, { id: Date.now().toString() + 'e', role: 'liora', text: "*(The connection to the ethereal plane seems unstable...)*" }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const triggerInitialGreeting = async () => {
     setIsLoading(true);
@@ -552,6 +630,20 @@ export default function LibraryDashboard() {
 
           {/* Chat Input Area */}
           <div className="absolute bottom-20 md:bottom-8 left-4 md:left-8 right-4 md:right-8 z-20">
+            {/* Conversation Starter Chips */}
+            {messages.length <= 1 && !isLoading && (
+              <div className="flex flex-wrap gap-2 mb-4 justify-center md:justify-start">
+                {getConversationStarters().map((starter, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSendStarter(starter)}
+                    className="px-4 py-2 rounded-full text-xs font-serif bg-[#161314]/80 backdrop-blur-md border border-white/5 hover:border-[#d4af37]/40 text-[#e6dfd5]/80 hover:text-[#d4af37] hover:bg-[#d4af37]/5 hover:shadow-[0_0_15px_rgba(212,175,55,0.15)] transition-all duration-300"
+                  >
+                    {starter}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="relative group">
               <div className="absolute -inset-0.5 bg-gradient-to-r from-[#d4af37]/20 via-[#f3efe0]/10 to-[#d4af37]/20 rounded-2xl blur opacity-30 group-focus-within:opacity-100 group-focus-within:bg-[#d4af37]/40 transition duration-500"></div>
               <div className="relative flex items-center bg-[#0e0c0d]/90 backdrop-blur-xl border border-white/10 group-focus-within:border-[#d4af37]/30 rounded-2xl px-4 py-3 shadow-2xl transition-colors">
