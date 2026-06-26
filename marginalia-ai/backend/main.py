@@ -121,6 +121,11 @@ def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: Backgro
     # Schedule memory extraction in the background
     background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, chat_request.message, reply)
     
+    # Save messages to short-term buffer
+    if chat_request.message != "__INITIAL_GREETING__":
+        crud.create_message_log(db, user_id=current_user.id, role="user", content=chat_request.message)
+        crud.create_message_log(db, user_id=current_user.id, role="liora", content=reply)
+    
     return {"reply": reply}
 
 # --- Speech Endpoints ---

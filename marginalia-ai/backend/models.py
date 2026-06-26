@@ -93,3 +93,13 @@ class Memory(Base):
     
     user = relationship("User", back_populates="memories")
     # Note: We won't map book relationship backwards to avoid clutter, just query by book_id when needed
+
+class MessageLog(Base):
+    """Stores the raw back-and-forth chat history for the sliding window buffer"""
+    __tablename__ = "message_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    role = Column(String(20), nullable=False) # 'user' or 'liora'
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

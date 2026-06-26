@@ -67,3 +67,16 @@ def update_taste_profile(db: Session, user_id: int, profile_update: schemas.Tast
         db.commit()
         db.refresh(db_profile)
     return db_profile
+
+# --- Message Log CRUD ---
+def get_recent_messages(db: Session, user_id: int, limit: int = 10):
+    # Fetch ordered by timestamp desc to get most recent, then reverse to chronological order
+    messages = db.query(models.MessageLog).filter(models.MessageLog.user_id == user_id).order_by(models.MessageLog.timestamp.desc()).limit(limit).all()
+    return list(reversed(messages))
+
+def create_message_log(db: Session, user_id: int, role: str, content: str):
+    db_message = models.MessageLog(user_id=user_id, role=role, content=content)
+    db.add(db_message)
+    db.commit()
+    db.refresh(db_message)
+    return db_message

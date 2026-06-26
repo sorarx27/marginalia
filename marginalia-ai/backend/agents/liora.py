@@ -107,10 +107,14 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
             {"role": "user", "content": "Hello. I am a new reader in your library. Please introduce yourself and welcome me, referencing my taste profile if you can."}
         ]
     else:
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ]
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # 4.5 Fetch short-term context buffer
+        recent_logs = crud.get_recent_messages(db, user_id=user_id, limit=10)
+        for log in recent_logs:
+            messages.append({"role": log.role, "content": log.content})
+            
+        messages.append({"role": "user", "content": user_message})
 
     # 5. Call Qwen (Tongyi Qianwen)
     response = Generation.call(
