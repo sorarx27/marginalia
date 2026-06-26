@@ -71,9 +71,9 @@ def synthesize_speech(text: str) -> bytes:
         logger.info(f"Connecting to Qwen Real-time TTS for text: {text[:40]}...")
         q.connect()
         
-        # Configure session to use 'Jennifer' and export MP3 format
+        # Configure session to use 'jennifer' and export MP3 format
         q.update_session(
-            voice='Jennifer',
+            voice='jennifer',
             response_format=AudioFormat.PCM_24000HZ_MONO_16BIT, # response_format is a required placeholder
             audio_format='mp3', # overrules format to MP3
             mode='server_commit'
