@@ -1,36 +1,16 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marginalia - Web Application Frontend
 
-## Getting Started
+This directory contains the user-facing web interface for **Marginalia**, built using Next.js, React, Tailwind CSS, and Playfair Display typography.
 
-First, run the development server:
+The interface is custom-tailored with a warm, literary, glassmorphic paper-and-gold aesthetic to create an elegant and reflective reading environment.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Layout Structure
+* `src/app/page.tsx` - The landing page and authentication entry point to Liora's Library.
+* `src/app/library/page.tsx` - The main conversational dashboard featuring Liora's chat interface, the bookshelf, active books, and the slide-out archives.
+* `src/app/library/log/page.tsx` - The Reading Log and historical reflections panel.
+* `src/app/library/profile/page.tsx` - The Taste Profile dashboard featuring the dynamic literary radar chart.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Setup & Running Instructions
+For complete instructions on running the entire application (both backend and frontend), configuring API keys, and setting up the database, please refer to the primary repository documentation:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+👉 **[Primary Repository README.md](../../README.md)**

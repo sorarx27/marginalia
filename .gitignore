@@ -1,0 +1,54 @@
+# Virtual Environments
+.venv/
+env/
+venv/
+ENV/
+ENV/
+
+# Python caches & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Next.js / Node.js
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+tsconfig.tsbuildinfo
+
+# Local databases, media logs & cache files
+*.db
+*.sqlite3
+marginalia.db
+*.wav
+*.mp3
+error.txt
+response.txt
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
