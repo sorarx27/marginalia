@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Boolean, Float, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -89,6 +89,7 @@ class Memory(Base):
     content = Column(Text, nullable=False)
     importance_score = Column(Float, default=1.0) # Used for RAG retrieval weighing
     image_url = Column(String(1000), nullable=True)
+    embedding = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="memories")

@@ -9,6 +9,7 @@ class MemoryBase(BaseModel):
     book_id: Optional[int] = None
     importance_score: float = 1.0
     image_url: Optional[str] = None
+    embedding: Optional[List[float]] = None
 
 class MemoryCreate(MemoryBase):
     pass

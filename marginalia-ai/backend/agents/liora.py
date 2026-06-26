@@ -1,6 +1,6 @@
 import os
 import dashscope
-from dashscope import Generation, ImageSynthesis
+from dashscope import Generation, ImageSynthesis, TextEmbedding
 from sqlalchemy.orm import Session
 from http import HTTPStatus
 import crud
@@ -66,7 +66,20 @@ Example output:
 
 def generate_liora_response(db: Session, user_id: int, user_message: str) -> str:
     # 1. Fetch user context
-    memories = crud.get_memories(db, user_id=user_id, limit=10)
+    if user_message == "__INITIAL_GREETING__":
+        memories = crud.get_memories(db, user_id=user_id, limit=10)
+    else:
+        try:
+            emb_resp = TextEmbedding.call(
+                model=TextEmbedding.Models.text_embedding_v1,
+                input=user_message
+            )
+            query_embedding = emb_resp.output['embeddings'][0]['embedding']
+            memories = crud.get_rag_memories(db, user_id=user_id, query_embedding=query_embedding, limit=5)
+        except Exception as e:
+            print("Embedding error:", e)
+            memories = crud.get_memories(db, user_id=user_id, limit=10)
+            
     user = crud.get_user(db, user_id=user_id)
     
     # 2. Format memories
@@ -181,10 +194,24 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                     print("Error generating visual memory:", img_err)
 
             for i, m in enumerate(extracted_memories):
+                content_str = m.get('content', '')
+                embedding_val = None
+                if content_str:
+                    try:
+                        emb_resp = TextEmbedding.call(
+                            model=TextEmbedding.Models.text_embedding_v1,
+                            input=content_str
+                        )
+                        if emb_resp.status_code == HTTPStatus.OK:
+                            embedding_val = emb_resp.output['embeddings'][0]['embedding']
+                    except Exception as e:
+                        print("Error generating memory embedding:", e)
+
                 memory_schema = schemas.MemoryCreate(
                     memory_type=m.get('memory_type', 'fact'),
-                    content=m.get('content', ''),
-                    image_url=image_url if i == 0 else None
+                    content=content_str,
+                    image_url=image_url if i == 0 else None,
+                    embedding=embedding_val
                 )
                 crud.create_memory(db, memory=memory_schema, user_id=user_id)
                 

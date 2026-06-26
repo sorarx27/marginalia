@@ -50,6 +50,32 @@ def update_book_progress(db: Session, book_id: int, user_id: int, book_update: s
 def get_memories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Memory).filter(models.Memory.user_id == user_id).order_by(models.Memory.timestamp.desc()).offset(skip).limit(limit).all()
 
+import math
+def cosine_similarity(v1, v2):
+    if not v1 or not v2 or len(v1) != len(v2): return 0.0
+    dot_product = sum(x * y for x, y in zip(v1, v2))
+    norm_v1 = math.sqrt(sum(x * x for x in v1))
+    norm_v2 = math.sqrt(sum(x * x for x in v2))
+    if norm_v1 == 0 or norm_v2 == 0: return 0.0
+    return dot_product / (norm_v1 * norm_v2)
+
+def get_rag_memories(db: Session, user_id: int, query_embedding: list[float], limit: int = 5):
+    # Fetch all memories with embeddings
+    memories = db.query(models.Memory).filter(models.Memory.user_id == user_id).filter(models.Memory.embedding.isnot(None)).all()
+    if not memories:
+        return []
+        
+    # Calculate similarities and sort
+    scored_memories = []
+    for mem in memories:
+        sim = cosine_similarity(query_embedding, mem.embedding)
+        scored_memories.append((sim, mem))
+        
+    scored_memories.sort(key=lambda x: x[0], reverse=True)
+    
+    # Return top K memories, ignoring scores below a certain threshold to avoid garbage
+    return [m[1] for m in scored_memories[:limit] if m[0] > 0.3]
+
 def create_memory(db: Session, memory: schemas.MemoryCreate, user_id: int):
     db_memory = models.Memory(**memory.model_dump(), user_id=user_id)
     db.add(db_memory)
