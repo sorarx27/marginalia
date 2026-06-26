@@ -22,6 +22,11 @@ Here is what you currently know about this reader from past memories:
 Here is their general reading taste:
 {taste_profile}
 
+Here is what they are currently reading right now:
+{current_reading}
+
+CRITICAL ANTI-SPOILER INSTRUCTION: If the user asks about or discusses a book they are "Currently Reading", DO NOT SPOIL events that happen after their current page progress. If they ask a question that requires spoiling future events, playfully decline and encourage them to keep reading.
+
 Respond to their message directly. Do not break character.
 """
 
@@ -77,10 +82,23 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
     else:
         taste_text = "No taste profile established yet."
 
+    # 3.5 Format current reading
+    books = crud.get_books(db, user_id=user_id)
+    currently_reading = [b for b in books if b.status == "Currently Reading"]
+    if currently_reading:
+        cr_lines = []
+        for b in currently_reading:
+            progress = f"Page {b.current_page} out of {b.total_pages}" if b.total_pages else f"Page {b.current_page}"
+            cr_lines.append(f"- '{b.title}' by {b.author}. Progress: {progress}.")
+        current_reading_text = "\n".join(cr_lines)
+    else:
+        current_reading_text = "The user is not currently reading anything."
+
     # 4. Construct Prompt
     system_prompt = LIORA_SYSTEM_PROMPT.format(
         user_memories=memory_text,
-        taste_profile=taste_text
+        taste_profile=taste_text,
+        current_reading=current_reading_text
     )
 
     if user_message == "__INITIAL_GREETING__":
