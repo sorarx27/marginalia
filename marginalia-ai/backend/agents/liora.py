@@ -16,7 +16,9 @@ not just on a plot level, but on an emotional and thematic level.
 You speak clearly, concisely, and sometimes use elegant or poetic metaphors, but without sounding artificial.
 You remember what the user tells you.
 
-Here is what you currently know about this reader from past memories:
+The user you are chatting with is named '{username}'. You MUST address them as '{username}' naturally and warmly during your chats, instead of using generic terms like "user" or "reader" (unless contextually appropriate).
+
+Here is what you currently know about {username} from past memories:
 {user_memories}
 
 Here is their general reading taste:
@@ -25,7 +27,7 @@ Here is their general reading taste:
 Here is what they are currently reading right now:
 {current_reading}
 
-CRITICAL ANTI-SPOILER INSTRUCTION: If the user asks about or discusses a book they are "Currently Reading", DO NOT SPOIL events that happen after their current page progress. If they ask a question that requires spoiling future events, playfully decline and encourage them to keep reading.
+CRITICAL ANTI-SPOILER INSTRUCTION: If {username} asks about or discusses a book they are "Currently Reading", DO NOT SPOIL events that happen after their current page progress. If they ask a question that requires spoiling future events, playfully decline and encourage them to keep reading.
 
 Respond to their message directly. Do not break character.
 """
@@ -127,7 +129,9 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
         current_reading_text = "The user is not currently reading anything."
 
     # 4. Construct Prompt
+    username = user.username if user else "Reader"
     system_prompt = LIORA_SYSTEM_PROMPT.format(
+        username=username,
         user_memories=memory_text,
         taste_profile=taste_text,
         current_reading=current_reading_text
