@@ -4,19 +4,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_HOST = os.environ.get("DB_HOST", "localhost")
-DB_NAME = os.environ.get("DB_NAME", "marginalia")
-DB_USER = os.environ.get("DB_USER", "postgres")
-DB_PASS = os.environ.get("DB_PASS", "postgres")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def migrate():
+    if not DATABASE_URL:
+        print("DATABASE_URL is not set.")
+        return
     try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS
-        )
+        conn = psycopg2.connect(DATABASE_URL)
         conn.autocommit = True
         cur = conn.cursor()
         
