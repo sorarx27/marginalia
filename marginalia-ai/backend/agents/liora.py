@@ -232,9 +232,9 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                         first_result = search_results[0]
                         # Use the result's title and author for accuracy if possible
                         db_title = first_result.get("title", title)
-                        db_author = ", ".join(first_result.get("authors", [])) or author
+                        db_author = first_result.get("author", author)
                         cover_image_url = first_result.get("cover_image_url")
-                        total_pages = first_result.get("page_count", 0)
+                        total_pages = first_result.get("total_pages", 0)
                     else:
                         db_title = title
                         db_author = author

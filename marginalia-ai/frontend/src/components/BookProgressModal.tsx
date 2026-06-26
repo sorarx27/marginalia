@@ -27,6 +27,14 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
     onSave(book.id, page, note);
   };
 
+  const handleFinish = () => {
+    setIsSaving(true);
+    // Passing -1 or page = total_pages to indicate finished
+    // Since page > 0 is checked in backend, we'll pass the maximum possible page, or 1000 if 0
+    const finalPage = book.total_pages > 0 ? book.total_pages : 1000;
+    onSave(book.id, finalPage, note);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div 
@@ -116,19 +124,31 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
             />
           </div>
 
-          <div className="flex gap-3 mt-2">
+          <div className="flex flex-col gap-3 mt-2">
+            <div className="flex gap-3">
+              <button 
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-white/10 text-[#e6dfd5]/60 hover:text-[#f3efe0] hover:bg-white/5 transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#9d7e1c] text-[#0e0c0d] font-semibold text-sm hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all disabled:opacity-50"
+              >
+                {isSaving ? 'Saving Checkpoint...' : 'Save Checkpoint'}
+              </button>
+            </div>
             <button 
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-white/10 text-[#e6dfd5]/60 hover:text-[#f3efe0] hover:bg-white/5 transition-colors font-medium text-sm"
-            >
-              Cancel
-            </button>
-            <button 
-              onClick={handleSave}
+              onClick={handleFinish}
               disabled={isSaving}
-              className="flex-1 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#9d7e1c] text-[#0e0c0d] font-semibold text-sm hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all disabled:opacity-50"
+              className="w-full py-3 rounded-xl border border-[#d4af37]/30 text-[#d4af37] font-semibold text-sm hover:bg-[#d4af37]/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isSaving ? 'Saving Checkpoint...' : 'Save Checkpoint'}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+              </svg>
+              Mark as Finished
             </button>
           </div>
 

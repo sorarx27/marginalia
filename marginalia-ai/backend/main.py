@@ -107,7 +107,10 @@ def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, backgrou
         
     echo_msg = None
     if book_update.note:
-        context_msg = f"I just read up to page {db_book.current_page} of {db_book.title}. My thoughts: {book_update.note}"
+        if db_book.status == "Read":
+            context_msg = f"I just finished reading {db_book.title}. My thoughts: {book_update.note}"
+        else:
+            context_msg = f"I just read up to page {db_book.current_page} of {db_book.title}. My thoughts: {book_update.note}"
         background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, context_msg, "Thank you for sharing your thoughts on this book.")
         echo_msg = liora.generate_echo(db_book.title, db_book.author or "Unknown Author", book_update.note)
         
