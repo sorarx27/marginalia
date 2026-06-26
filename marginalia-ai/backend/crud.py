@@ -83,6 +83,10 @@ def create_memory(db: Session, memory: schemas.MemoryCreate, user_id: int):
     db.refresh(db_memory)
     return db_memory
 
+def delete_memories(db: Session, memory_ids: list[int], user_id: int):
+    db.query(models.Memory).filter(models.Memory.id.in_(memory_ids), models.Memory.user_id == user_id).delete(synchronize_session=False)
+    db.commit()
+
 # --- Taste Profile CRUD ---
 def update_taste_profile(db: Session, user_id: int, profile_update: schemas.TasteProfileCreate):
     db_profile = db.query(models.TasteProfile).filter(models.TasteProfile.user_id == user_id).first()

@@ -6,7 +6,7 @@ from typing import List
 import io
 import models, schemas, crud, auth, google_books, tts
 from database import engine, get_db
-from agents import liora
+from agents import liora, dreamer
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 
@@ -127,6 +127,11 @@ def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: Backgro
         crud.create_message_log(db, user_id=current_user.id, role="liora", content=reply)
     
     return {"reply": reply}
+
+@app.post("/users/me/dream")
+def trigger_memory_consolidation(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    result = dreamer.trigger_dream(db, user_id=current_user.id)
+    return result
 
 # --- Speech Endpoints ---
 @app.post("/users/me/speak")
