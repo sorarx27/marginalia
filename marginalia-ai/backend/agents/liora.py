@@ -223,6 +223,15 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                 author = b.get('author', '')
                 status = b.get('status', 'Read')
                 if title:
+                    existing_book = crud.get_book_by_title_and_user(db, title, user_id)
+                    if existing_book:
+                        update_data = {"status": status}
+                        if status == "Read" and existing_book.total_pages:
+                            update_data["current_page"] = existing_book.total_pages
+                        book_update = schemas.BookUpdate(**update_data)
+                        crud.update_book_progress(db, existing_book.id, user_id, book_update)
+                        continue
+
                     query = f"{title} {author}".strip()
                     search_results = google_books.search_books(query)
                     

@@ -30,6 +30,12 @@ def create_user(db: Session, user: schemas.UserCreate):
 def get_books(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Book).filter(models.Book.owner_id == user_id).offset(skip).limit(limit).all()
 
+def get_book_by_title_and_user(db: Session, title: str, user_id: int):
+    return db.query(models.Book).filter(
+        models.Book.owner_id == user_id,
+        models.Book.title.ilike(f"%{title}%")
+    ).first()
+
 def create_book(db: Session, book: schemas.BookCreate, user_id: int):
     db_book = models.Book(**book.model_dump(), owner_id=user_id)
     db.add(db_book)
