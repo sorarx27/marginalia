@@ -112,3 +112,19 @@ class TokenData(BaseModel):
 class SpeakRequest(BaseModel):
     text: str
 
+# --- Global Book Note Schemas ---
+class GlobalBookNoteBase(BaseModel):
+    book_title: str
+    author: Optional[str] = None
+    sentiment: Optional[str] = None
+    content: str
+
+class GlobalBookNoteCreate(GlobalBookNoteBase):
+    pass
+
+class GlobalBookNoteResponse(GlobalBookNoteBase):
+    id: int
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True

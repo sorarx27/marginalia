@@ -119,3 +119,16 @@ def create_message_log(db: Session, user_id: int, role: str, content: str):
     db.commit()
     db.refresh(db_message)
     return db_message
+
+# --- Global Book Notes CRUD ---
+def create_global_note(db: Session, note: schemas.GlobalBookNoteCreate):
+    db_note = models.GlobalBookNote(**note.model_dump())
+    db.add(db_note)
+    db.commit()
+    db.refresh(db_note)
+    return db_note
+
+def get_global_notes_by_title(db: Session, title: str, limit: int = 3):
+    return db.query(models.GlobalBookNote).filter(
+        models.GlobalBookNote.book_title.ilike(f"%{title}%")
+    ).order_by(models.GlobalBookNote.timestamp.desc()).limit(limit).all()

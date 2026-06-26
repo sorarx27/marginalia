@@ -104,3 +104,14 @@ class MessageLog(Base):
     role = Column(String(20), nullable=False) # 'user' or 'liora'
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+class GlobalBookNote(Base):
+    """Anonymized, collective memory pool for global book insights"""
+    __tablename__ = "global_book_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    book_title = Column(String(200), index=True, nullable=False)
+    author = Column(String(100), index=True, nullable=True)
+    sentiment = Column(String(50), nullable=True) # Positive, Negative, Insight, etc.
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

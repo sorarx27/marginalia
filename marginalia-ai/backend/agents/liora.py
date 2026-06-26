@@ -38,15 +38,17 @@ Your job is to read a recent message from the user and extract:
 3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste. Only do this if it's a brilliant match.
 4. ANY TIME the user shares an opinion on a book, extract subtle shifts in their taste profile across 5 axes (0-100 scale).
 5. IMPORTANT: If the user describes an exceptionally vivid, highly emotional, or "wow" moment from a book they are reading, generate an `image_prompt`. This prompt should vividly describe a beautiful, dream-like illustration of that scene or feeling to be rendered by a text-to-image model. ONLY do this for extremely vivid/wow moments, NOT mundane facts.
+6. NEW: If the user shares a clear opinion, review, or thought about a specific book, extract a `global_note`. This note MUST be completely anonymized (remove "I", "me", names, or personal identifiers). It should be a single, punchy insight about the book from "a reader" (e.g. "A reader found the pacing slow but the magic system incredibly detailed.").
 
-Return the result as a JSON object with up to five keys: 'memories', 'books', 'proactive_recommendation', 'taste_shifts', and 'image_prompt'.
+Return the result as a JSON object with up to six keys: 'memories', 'books', 'proactive_recommendation', 'taste_shifts', 'image_prompt', and 'global_note'.
 - 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content'.
 - 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read" or "Currently Reading").
 - 'proactive_recommendation' (optional): An object with 'title', 'author', and 'note' (a personalized message from Liora explaining why she recommends it).
-- 'taste_shifts' (optional): An object with 5 keys ('complexity_score', 'worldbuilding_score', 'character_score', 'tone_score', 'pacing_score'). ONLY include the keys that the user's message directly influences. Values should be integers between 0 and 100 representing the user's PREFERRED state (e.g. if they say "I love complex magic systems", 'worldbuilding_score' might be 85).
+- 'taste_shifts' (optional): An object with 5 keys ('complexity_score', 'worldbuilding_score', 'character_score', 'tone_score', 'pacing_score'). ONLY include the keys that the user's message directly influences. Values should be integers between 0 and 100 representing the user's PREFERRED state.
 - 'image_prompt' (optional): A string containing a highly detailed, descriptive prompt for generating an image of the vivid memory.
+- 'global_note' (optional): An object with 'book_title', 'author' (optional), 'sentiment' (e.g. "Positive", "Negative", "Insight"), and 'content' (the anonymized insight).
 
-If there is nothing new to extract, return empty arrays. If no recommendation, shift, or image is warranted, omit the key or set it to null.
+If there is nothing new to extract, return empty arrays. If no recommendation, shift, image, or global note is warranted, omit the key or set it to null.
 
 Example output:
 {
@@ -60,6 +62,11 @@ Example output:
   "taste_shifts": {
     "complexity_score": 80,
     "worldbuilding_score": 90
+  },
+  "global_note": {
+    "book_title": "The Martian",
+    "sentiment": "Insight",
+    "content": "A reader felt the technical details were fascinating but sometimes bogged down the pacing."
   }
 }
 """
@@ -98,12 +105,24 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
     # 3.5 Format current reading
     books = crud.get_books(db, user_id=user_id)
     currently_reading = [b for b in books if b.status == "Currently Reading"]
+    
+    global_notes_text = ""
     if currently_reading:
         cr_lines = []
+        gn_lines = []
         for b in currently_reading:
             progress = f"Page {b.current_page} out of {b.total_pages}" if b.total_pages else f"Page {b.current_page}"
             cr_lines.append(f"- '{b.title}' by {b.author}. Progress: {progress}.")
+            
+            # Fetch global notes for this book
+            global_notes = crud.get_global_notes_by_title(db, b.title, limit=2)
+            if global_notes:
+                for note in global_notes:
+                    gn_lines.append(f"- {b.title}: \"{note.content}\"")
+        
         current_reading_text = "\n".join(cr_lines)
+        if gn_lines:
+            global_notes_text = "\nHere are some anonymized thoughts from other readers in the global community about the books currently on the desk:\n" + "\n".join(gn_lines)
     else:
         current_reading_text = "The user is not currently reading anything."
 
@@ -113,6 +132,9 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
         taste_profile=taste_text,
         current_reading=current_reading_text
     )
+    
+    if global_notes_text:
+        system_prompt += global_notes_text
 
     if user_message == "__INITIAL_GREETING__":
         messages = [
@@ -314,6 +336,17 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                     if update_data:
                         profile_schema = schemas.TasteProfileCreate(**update_data)
                         crud.update_taste_profile(db, user_id=user_id, profile_update=profile_schema)
+                
+            # Handle global note
+            global_note_data = extracted_data.get("global_note")
+            if global_note_data and global_note_data.get("book_title") and global_note_data.get("content"):
+                note_schema = schemas.GlobalBookNoteCreate(
+                    book_title=global_note_data.get("book_title"),
+                    author=global_note_data.get("author"),
+                    sentiment=global_note_data.get("sentiment"),
+                    content=global_note_data.get("content")
+                )
+                crud.create_global_note(db, note_schema)
                 
         except Exception as e:
             print("Error parsing memory extraction:", e)
