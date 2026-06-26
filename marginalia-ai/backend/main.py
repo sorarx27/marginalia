@@ -5,15 +5,41 @@ from sqlalchemy import text
 from typing import List
 import io
 import models, schemas, crud, auth, google_books, tts
-from database import engine, get_db
+from database import engine, get_db, SessionLocal
 from agents import liora, dreamer
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
+from contextlib import asynccontextmanager
+import asyncio
 
 # Create the database tables
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Marginalia AI Backend", description="Core API for Liora the reading companion")
+async def scheduled_dreaming():
+    while True:
+        await asyncio.sleep(86400) # 24 hours
+        print("Running scheduled memory consolidation...")
+        db = SessionLocal()
+        try:
+            users = crud.get_all_users(db)
+            for user in users:
+                try:
+                    result = dreamer.trigger_dream(db, user_id=user.id)
+                    print(f"Dream result for user {user.id}: {result}")
+                except Exception as e:
+                    print(f"Error dreaming for user {user.id}: {e}")
+        finally:
+            db.close()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    task = asyncio.create_task(scheduled_dreaming())
+    yield
+    # Shutdown
+    task.cancel()
+
+app = FastAPI(title="Marginalia AI Backend", description="Core API for Liora the reading companion", lifespan=lifespan)
 
 @app.get("/")
 def read_root():
