@@ -125,7 +125,8 @@ def generate_liora_response(db: Session, user_id: int, user_message: str) -> str
         # 4.5 Fetch short-term context buffer
         recent_logs = crud.get_recent_messages(db, user_id=user_id, limit=10)
         for log in recent_logs:
-            messages.append({"role": log.role, "content": log.content})
+            role_to_use = "assistant" if log.role == "liora" else log.role
+            messages.append({"role": role_to_use, "content": log.content})
             
         messages.append({"role": "user", "content": user_message})
 
@@ -244,7 +245,9 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                         cover_image_url=cover_image_url,
                         total_pages=total_pages,
                         status=status,
-                        current_page=0
+                        current_page=0,
+                        recommended_by_liora=True,
+                        liora_note="I noticed you mentioned this book, so I slipped a copy onto your desk!"
                     )
                     crud.create_book(db, book=book_schema, user_id=user_id)
                     
