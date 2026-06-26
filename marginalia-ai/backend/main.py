@@ -157,6 +157,13 @@ def chat_with_liora(chat_request: schemas.ChatRequest, background_tasks: Backgro
     
     return {"reply": reply}
 
+@app.get("/users/me/chat/history", response_model=List[schemas.MessageLogResponse])
+def read_chat_history(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Fetch all historical chat messages ordered chronologically (ascending)
+    return db.query(models.MessageLog).filter(
+        models.MessageLog.user_id == current_user.id
+    ).order_by(models.MessageLog.timestamp.asc()).all()
+
 @app.post("/users/me/dream")
 def trigger_memory_consolidation(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     result = dreamer.trigger_dream(db, user_id=current_user.id)

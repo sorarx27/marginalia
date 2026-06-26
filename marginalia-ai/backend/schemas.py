@@ -128,3 +128,14 @@ class GlobalBookNoteResponse(GlobalBookNoteBase):
 
     class Config:
         from_attributes = True
+
+# --- Chat History Schemas ---
+class MessageLogResponse(BaseModel):
+    id: int
+    role: str
+    content: str
+    timestamp: datetime
+
+    class Config:
+        from_attributes = True
+

@@ -37,6 +37,20 @@ interface Book {
   liora_note: string | null;
 }
 
+interface RawHistoryMessage {
+  id: number;
+  role: 'user' | 'liora';
+  content: string;
+  timestamp: string;
+}
+
+interface HistorySession {
+  id: string;
+  startTime: Date;
+  messages: RawHistoryMessage[];
+  title: string;
+}
+
 export default function LibraryDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -52,6 +66,13 @@ export default function LibraryDashboard() {
   const [selectedRecommendation, setSelectedRecommendation] = useState<Book | null>(null);
   const [echoMessage, setEchoMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Chat History States
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [rawHistory, setRawHistory] = useState<RawHistoryMessage[]>([]);
+  const [selectedSession, setSelectedSession] = useState<HistorySession | null>(null);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   
   // Liora Speech States & Refs
   const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
@@ -184,7 +205,106 @@ export default function LibraryDashboard() {
 
     fetchMemories();
     fetchBooks();
+    fetchChatHistory();
   }, [router]);
+
+  const fetchChatHistory = async () => {
+    setIsHistoryLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      const res = await fetch('/api/users/me/chat/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRawHistory(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch chat history:", e);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  const groupMessagesIntoSessions = (rawLogs: RawHistoryMessage[]): HistorySession[] => {
+    if (rawLogs.length === 0) return [];
+    
+    const sessions: HistorySession[] = [];
+    let currentSessionMessages: RawHistoryMessage[] = [rawLogs[0]];
+    let prevTime = new Date(rawLogs[0].timestamp).getTime();
+    
+    for (let i = 1; i < rawLogs.length; i++) {
+      const msg = rawLogs[i];
+      const currTime = new Date(msg.timestamp).getTime();
+      
+      // If gap is greater than 30 minutes, slice into a new session
+      if (currTime - prevTime > 30 * 60 * 1000) {
+        const sessionStart = new Date(currentSessionMessages[0].timestamp);
+        const firstUserMsg = currentSessionMessages.find(m => m.role === 'user')?.content || "Dialogue with Liora";
+        const title = firstUserMsg.length > 40 ? firstUserMsg.slice(0, 40) + "..." : firstUserMsg;
+        
+        sessions.push({
+          id: sessionStart.getTime().toString(),
+          startTime: sessionStart,
+          messages: currentSessionMessages,
+          title: title
+        });
+        currentSessionMessages = [msg];
+      } else {
+        currentSessionMessages.push(msg);
+      }
+      prevTime = currTime;
+    }
+    
+    if (currentSessionMessages.length > 0) {
+      const sessionStart = new Date(currentSessionMessages[0].timestamp);
+      const firstUserMsg = currentSessionMessages.find(m => m.role === 'user')?.content || "Dialogue with Liora";
+      const title = firstUserMsg.length > 40 ? firstUserMsg.slice(0, 40) + "..." : firstUserMsg;
+      
+      sessions.push({
+        id: sessionStart.getTime().toString(),
+        startTime: sessionStart,
+        messages: currentSessionMessages,
+        title: title
+      });
+    }
+    
+    return sessions.reverse();
+  };
+
+  const getSessionTimeBucket = (date: Date): string => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    const sixDaysAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+    
+    const compareDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+    if (compareDate.getTime() === today.getTime()) {
+      return "Today";
+    } else if (compareDate.getTime() === yesterday.getTime()) {
+      return "Yesterday";
+    } else if (compareDate.getTime() >= sixDaysAgo.getTime()) {
+      return "This Week";
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+  };
+
+  const highlightSearchText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const parts = text.split(new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi'));
+    return (
+      <>
+        {parts.map((part, i) => 
+          part.toLowerCase() === query.toLowerCase()
+            ? <span key={i} className="bg-[#d4af37]/30 text-white font-semibold rounded-[2px] px-0.5">{part}</span>
+            : part
+        )}
+      </>
+    );
+  };
 
   const fetchMemories = async () => {
     try {
@@ -434,9 +554,10 @@ export default function LibraryDashboard() {
       
       setMessages((prev) => [...prev, { id: Date.now().toString() + 'r', role: 'liora', text: data.reply }]);
       
-      // Memory extraction takes a bit, so wait 3 seconds before fetching new memories
+      // Memory extraction takes a bit, so wait 3 seconds before fetching new memories and updating history
       setTimeout(() => {
         fetchMemories();
+        fetchChatHistory();
       }, 3000);
       
     } catch (error) {
@@ -527,6 +648,15 @@ export default function LibraryDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
               </svg>
               Taste Profile
+            </button>
+            <button 
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-[#e6dfd5]/60 hover:text-[#e6dfd5] hover:bg-white/5 transition-all text-sm font-medium"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+              </svg>
+              Archives & History
             </button>
           </nav>
 
@@ -697,6 +827,15 @@ export default function LibraryDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
             </svg>
             <span className="text-[10px] font-medium">Taste</span>
+          </button>
+          <button 
+            onClick={() => setIsHistoryOpen(true)}
+            className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <span className="text-[10px] font-medium">History</span>
           </button>
           <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
             <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-[9px] uppercase">
@@ -881,6 +1020,208 @@ export default function LibraryDashboard() {
           onClose={() => setEchoMessage(null)} 
         />
       )}
+
+      {/* Chat History Drawer Overlay */}
+      {isHistoryOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+          onClick={() => setIsHistoryOpen(false)}
+        />
+      )}
+
+      {/* Chat History Drawer Panel */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-full sm:w-[28rem] bg-[#0c0a0b]/98 backdrop-blur-2xl border-r border-white/5 p-6 flex flex-col gap-6 shadow-[5px_0_30px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-in-out ${isHistoryOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}`}>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-5 h-5 text-[#d4af37]">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            <h3 className="text-base font-serif text-[#f3efe0] font-semibold">Library Archives</h3>
+          </div>
+          <button 
+            onClick={() => setIsHistoryOpen(false)}
+            className="p-1.5 rounded-full hover:bg-white/5 text-[#e6dfd5]/60 hover:text-[#d4af37] transition-all"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <input 
+            type="text"
+            value={historySearchQuery}
+            onChange={(e) => setHistorySearchQuery(e.target.value)}
+            placeholder="Search past conversations..."
+            className="w-full bg-[#161314]/60 border border-white/5 focus:border-[#d4af37]/40 rounded-xl pl-9 pr-8 py-2.5 text-xs font-serif text-[#f3efe0] placeholder-[#e6dfd5]/30 outline-none transition-all"
+          />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="absolute left-3 top-3 w-4 h-4 text-[#e6dfd5]/30">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.603 10.601Z" />
+          </svg>
+          {historySearchQuery && (
+            <button 
+              onClick={() => setHistorySearchQuery('')}
+              className="absolute right-3 top-3 text-[#e6dfd5]/30 hover:text-[#f3efe0] transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Session List */}
+        <div className="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-6">
+          {isHistoryLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <span className="w-6 h-6 rounded-full border-2 border-[#d4af37]/20 border-t-[#d4af37] animate-spin" />
+              <p className="text-xs text-[#e6dfd5]/40 font-serif italic">Unrolling the scrolls...</p>
+            </div>
+          ) : rawHistory.length === 0 ? (
+            <div className="text-center py-12 px-4 border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
+              <p className="text-xs text-[#e6dfd5]/40 font-serif italic leading-relaxed">Your archives are quiet. As you share stories with Liora, your dialogues will be preserved here.</p>
+            </div>
+          ) : (
+            (() => {
+              const sessions = groupMessagesIntoSessions(rawHistory);
+              const filtered = sessions.filter(s => {
+                if (!historySearchQuery.trim()) return true;
+                const q = historySearchQuery.toLowerCase();
+                return s.messages.some(m => m.content.toLowerCase().includes(q));
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-12 px-4">
+                    <p className="text-xs text-[#e6dfd5]/40 font-serif italic">No matching conversations found.</p>
+                  </div>
+                );
+              }
+
+              const buckets: { [key: string]: typeof sessions } = {};
+              filtered.forEach(s => {
+                const b = getSessionTimeBucket(s.startTime);
+                if (!buckets[b]) buckets[b] = [];
+                buckets[b].push(s);
+              });
+
+              return Object.keys(buckets).map(bucketName => (
+                <div key={bucketName} className="space-y-2.5">
+                  <h4 className="text-[10px] font-sans font-semibold tracking-wider text-[#d4af37]/50 uppercase px-1">
+                    {bucketName}
+                  </h4>
+                  <div className="space-y-2">
+                    {buckets[bucketName].map(session => (
+                      <div 
+                        key={session.id}
+                        onClick={() => setSelectedSession(session)}
+                        className="group p-4 rounded-xl bg-white/[0.01] border border-white/5 hover:border-[#d4af37]/30 hover:bg-[#d4af37]/5 cursor-pointer transition-all duration-300 shadow-[inset_1px_1px_0_rgba(255,255,255,0.02)]"
+                      >
+                        <div className="flex justify-between items-start mb-1.5">
+                          <span className="text-[10px] text-[#e6dfd5]/40 font-sans">
+                            {session.startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {session.startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                          </span>
+                          <span className="text-[10px] text-[#d4af37]/60 group-hover:text-[#d4af37] font-serif transition-colors">
+                            {session.messages.length} exchanges
+                          </span>
+                        </div>
+                        <h5 className="text-xs font-serif text-[#f3efe0] font-medium leading-snug group-hover:text-[#d4af37] transition-colors truncate">
+                          {session.title}
+                        </h5>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()
+          )}
+        </div>
+      </div>
+
+      {/* Transcript Modal Overlay */}
+      {selectedSession && (
+        <div 
+          className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-md transition-opacity duration-300"
+          onClick={() => setSelectedSession(null)}
+        />
+      )}
+
+      {/* Transcript Modal Panel (Slides from the right) */}
+      <div className={`fixed inset-y-0 right-0 z-[70] w-full sm:w-[32rem] bg-[#0c0a0b]/98 backdrop-blur-2xl border-l border-white/5 p-6 flex flex-col gap-6 shadow-[-5px_0_30px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-in-out ${selectedSession ? 'translate-x-0' : 'translate-x-full pointer-events-none'}`}>
+        {selectedSession && (
+          <>
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-white/5 pb-4">
+              <div>
+                <span className="text-[10px] text-[#d4af37] font-semibold tracking-wider uppercase font-sans">Archived Reflection</span>
+                <h3 className="text-sm font-serif text-[#f3efe0] font-semibold leading-relaxed mt-0.5 truncate w-[18rem] sm:w-[22rem]">
+                  {selectedSession.title}
+                </h3>
+                <span className="text-[10px] text-[#e6dfd5]/40 font-sans mt-0.5 block">
+                  {selectedSession.startTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • {selectedSession.startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                </span>
+              </div>
+              <button 
+                onClick={() => setSelectedSession(null)}
+                className="p-2 rounded-full hover:bg-white/5 text-[#e6dfd5]/60 hover:text-[#d4af37] transition-all flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Transcript Messages List */}
+            <div className="flex-1 overflow-y-auto pr-1 no-scrollbar space-y-6">
+              {selectedSession.messages.map((msg) => (
+                <div key={msg.id} className={`flex items-start gap-4 max-w-xl ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}>
+                  {msg.role === 'liora' && (
+                    <div className="relative flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full overflow-hidden border border-[#d4af37]/30 relative">
+                        <Image src="/liora_portrait.png" alt="Liora" fill className="object-cover" />
+                      </div>
+                    </div>
+                  )}
+                  <div className={`p-4 rounded-2xl shadow-md relative group/archived-bubble ${
+                    msg.role === 'user' 
+                      ? 'bg-[#d4af37]/5 border border-[#d4af37]/15 text-[#f3efe0] rounded-tr-none' 
+                      : 'bg-[#161314]/80 backdrop-blur-md border border-white/5 rounded-tl-none'
+                  }`}>
+                    <p className="font-serif leading-relaxed text-[13.5px] whitespace-pre-line text-[#e6dfd5] pr-2">
+                      {highlightSearchText(msg.content, historySearchQuery)}
+                    </p>
+                    {msg.role === 'liora' && (
+                      <button 
+                        onClick={() => handleSpeakMessage(msg.id.toString(), msg.content)}
+                        className={`absolute right-2.5 bottom-2 p-1 rounded-full bg-[#0e0c0d]/60 border border-[#d4af37]/10 text-[#d4af37] flex items-center justify-center transition-all ${
+                          playingMessageId === msg.id.toString() 
+                            ? 'opacity-100 scale-100 bg-[#d4af37]/10' 
+                            : 'opacity-0 group-hover/archived-bubble:opacity-100 scale-95 hover:scale-105'
+                        }`}
+                        title={playingMessageId === msg.id.toString() ? "Pause speech" : "Read aloud"}
+                      >
+                        {playingMessageId === msg.id.toString() ? (
+                          <div className="flex items-end gap-[1.5px] h-3 w-3 px-0.5 pb-0.5">
+                            <span className="w-[1px] h-full bg-[#d4af37] eq-bar eq-bar-1 rounded-full animate-pulse" />
+                            <span className="w-[1px] h-full bg-[#d4af37] eq-bar eq-bar-2 rounded-full animate-pulse delay-100" />
+                            <span className="w-[1px] h-full bg-[#d4af37] eq-bar eq-bar-3 rounded-full animate-pulse delay-200" />
+                          </div>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
