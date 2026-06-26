@@ -9,6 +9,7 @@ interface Memory {
   id: number;
   memory_type: string;
   content: string;
+  image_url?: string;
 }
 
 interface Book {
@@ -207,6 +208,11 @@ export default function TasteProfileDashboard() {
                       <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[#e6dfd5]/60 uppercase tracking-widest">{mem.memory_type}</span>
                     </div>
                     <p className="text-[15px] text-[#f3efe0] font-serif leading-relaxed italic">"{mem.content}"</p>
+                    {mem.image_url && (
+                      <div className="mt-4 rounded-xl overflow-hidden border border-white/10 shadow-inner">
+                        <img src={mem.image_url} alt="Visual memory" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

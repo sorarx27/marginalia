@@ -88,6 +88,7 @@ class Memory(Base):
     memory_type = Column(String(50)) # e.g. "plot_theory", "character_reaction", "emotional_state"
     content = Column(Text, nullable=False)
     importance_score = Column(Float, default=1.0) # Used for RAG retrieval weighing
+    image_url = Column(String(1000), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="memories")

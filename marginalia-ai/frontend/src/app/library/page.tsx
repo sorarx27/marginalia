@@ -21,6 +21,7 @@ interface Memory {
   id: number;
   memory_type: string;
   content: string;
+  image_url?: string;
 }
 
 interface Book {
@@ -634,6 +635,11 @@ export default function LibraryDashboard() {
                   <div key={mem.id} className={`group relative p-4 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all hover:shadow-[0_0_15px_rgba(212,175,55,0.05)] cursor-default overflow-hidden animate-[float_6s_ease-in-out_infinite]`} style={{ animationDelay: `${idx * 0.5}s` }}>
                     <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-[#d4af37]/60 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
                     <p className="text-[13px] text-[#f3efe0] mb-1.5 font-serif italic leading-relaxed">"{mem.content}"</p>
+                    {mem.image_url && (
+                      <div className="mt-2 mb-2 rounded-lg overflow-hidden border border-white/10 shadow-inner">
+                        <img src={mem.image_url} alt="Visual memory" className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700" />
+                      </div>
+                    )}
                     <p className="text-[10px] text-[#e6dfd5]/40 uppercase tracking-wide">{mem.memory_type}</p>
                   </div>
                 ))

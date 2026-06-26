@@ -1,7 +1,8 @@
 import os
 import dashscope
-from dashscope import Generation
+from dashscope import Generation, ImageSynthesis
 from sqlalchemy.orm import Session
+from http import HTTPStatus
 import crud
 
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
@@ -31,14 +32,16 @@ Your job is to read a recent message from the user and extract:
 2. Any books they explicitly mention having read in the past, or books they mention currently reading.
 3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste. Only do this if it's a brilliant match.
 4. ANY TIME the user shares an opinion on a book, extract subtle shifts in their taste profile across 5 axes (0-100 scale).
+5. IMPORTANT: If the user describes an exceptionally vivid, highly emotional, or "wow" moment from a book they are reading, generate an `image_prompt`. This prompt should vividly describe a beautiful, dream-like illustration of that scene or feeling to be rendered by a text-to-image model. ONLY do this for extremely vivid/wow moments, NOT mundane facts.
 
-Return the result as a JSON object with up to four keys: 'memories', 'books', 'proactive_recommendation', and 'taste_shifts'.
+Return the result as a JSON object with up to five keys: 'memories', 'books', 'proactive_recommendation', 'taste_shifts', and 'image_prompt'.
 - 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content'.
 - 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read" or "Currently Reading").
 - 'proactive_recommendation' (optional): An object with 'title', 'author', and 'note' (a personalized message from Liora explaining why she recommends it).
 - 'taste_shifts' (optional): An object with 5 keys ('complexity_score', 'worldbuilding_score', 'character_score', 'tone_score', 'pacing_score'). ONLY include the keys that the user's message directly influences. Values should be integers between 0 and 100 representing the user's PREFERRED state (e.g. if they say "I love complex magic systems", 'worldbuilding_score' might be 85).
+- 'image_prompt' (optional): A string containing a highly detailed, descriptive prompt for generating an image of the vivid memory.
 
-If there is nothing new to extract, return empty arrays. If no recommendation or shift is warranted, omit the key or set it to null.
+If there is nothing new to extract, return empty arrays. If no recommendation, shift, or image is warranted, omit the key or set it to null.
 
 Example output:
 {
@@ -140,10 +143,26 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
                 extracted_memories = extracted_data.get("memories", [])
                 extracted_books = extracted_data.get("books", [])
 
-            for m in extracted_memories:
+            image_url = None
+            image_prompt = extracted_data.get("image_prompt")
+            if image_prompt:
+                try:
+                    rsp = ImageSynthesis.call(
+                        model='wanx-v1',
+                        prompt=image_prompt,
+                        n=1,
+                        size='1024*1024'
+                    )
+                    if rsp.status_code == HTTPStatus.OK:
+                        image_url = rsp.output.results[0].url
+                except Exception as img_err:
+                    print("Error generating visual memory:", img_err)
+
+            for i, m in enumerate(extracted_memories):
                 memory_schema = schemas.MemoryCreate(
                     memory_type=m.get('memory_type', 'fact'),
-                    content=m.get('content', '')
+                    content=m.get('content', ''),
+                    image_url=image_url if i == 0 else None
                 )
                 crud.create_memory(db, memory=memory_schema, user_id=user_id)
                 
