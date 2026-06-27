@@ -101,6 +101,10 @@ def read_books_for_user(skip: int = 0, limit: int = 100, db: Session = Depends(g
 
 @app.put("/users/me/books/{book_id}", response_model=schemas.BookResponse)
 def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Check if user wants to remove from desk based on note
+    if book_update.note and liora.check_desk_removal_intent(book_update.note):
+        book_update.status = "Dropped"
+
     db_book = crud.update_book_progress(db=db, book_id=book_id, user_id=current_user.id, book_update=book_update)
     if not db_book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -109,10 +113,12 @@ def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, backgrou
     if book_update.note:
         if db_book.status == "Read":
             context_msg = f"I just finished reading {db_book.title}. My thoughts: {book_update.note}"
+        elif db_book.status == "Dropped":
+            context_msg = f"I decided to stop reading {db_book.title} and removed it from my desk. My thoughts: {book_update.note}"
         else:
             context_msg = f"I just read up to page {db_book.current_page} of {db_book.title}. My thoughts: {book_update.note}"
         background_tasks.add_task(liora.extract_and_store_memory, db, current_user.id, context_msg, "Thank you for sharing your thoughts on this book.")
-        echo_msg = liora.generate_echo(db_book.title, db_book.author or "Unknown Author", book_update.note)
+        echo_msg = liora.generate_echo(db, db_book.title, db_book.author or "Unknown Author", book_update.note)
         
     # Convert ORM object to Pydantic model so we can attach the echo
     response_data = schemas.BookResponse.model_validate(db_book)

@@ -14,17 +14,18 @@ interface Book {
 interface BookProgressModalProps {
   book: Book;
   onClose: () => void;
-  onSave: (bookId: number, newPage: number, note: string) => void;
+  onSave: (bookId: number, newPage: number, note: string, dropBook?: boolean) => void;
 }
 
 export default function BookProgressModal({ book, onClose, onSave }: BookProgressModalProps) {
   const [page, setPage] = useState(book.current_page);
   const [note, setNote] = useState('');
+  const [dropBook, setDropBook] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
-    onSave(book.id, page, note);
+    onSave(book.id, page, note, dropBook);
   };
 
   const handleFinish = () => {
@@ -32,7 +33,7 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
     // Passing -1 or page = total_pages to indicate finished
     // Since page > 0 is checked in backend, we'll pass the maximum possible page, or 1000 if 0
     const finalPage = book.total_pages > 0 ? book.total_pages : 1000;
-    onSave(book.id, finalPage, note);
+    onSave(book.id, finalPage, note, false);
   };
 
   return (
@@ -122,6 +123,19 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
               placeholder="What do you think of the pacing? The characters? The prose? Liora will remember this..."
               className="w-full h-28 bg-[#0e0c0d]/50 border border-white/10 rounded-xl p-4 text-sm text-[#f3efe0] placeholder-[#e6dfd5]/30 focus:border-[#d4af37]/50 focus:bg-white/5 outline-none transition-all font-serif resize-none"
             />
+          </div>
+
+          {/* Remove book from desk toggle */}
+          <div className="flex items-center gap-3 bg-[#0e0c0d]/30 border border-white/5 rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-all" onClick={() => setDropBook(!dropBook)}>
+            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${dropBook ? 'border-[#d4af37] bg-[#d4af37]/10 text-[#d4af37]' : 'border-white/20 text-transparent'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-serif text-[#f3efe0] font-medium">Remove book from my desk</span>
+              <span className="text-[10px] text-[#e6dfd5]/40 font-serif">Stop reading this book for now and shelf it</span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3 mt-2">

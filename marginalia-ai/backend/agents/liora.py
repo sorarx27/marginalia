@@ -29,6 +29,8 @@ Here is what they are currently reading right now:
 
 CRITICAL ANTI-SPOILER INSTRUCTION: If {username} asks about or discusses a book they are "Currently Reading", DO NOT SPOIL events that happen after their current page progress. If they ask a question that requires spoiling future events, playfully decline and encourage them to keep reading.
 
+CRITICAL COMMUNITY INSTRUCTION: If there are no anonymized thoughts from other readers in the context, do NOT mention other readers, do not refer to a community or other consensus, and do not make up or hallucinate community opinions.
+
 Respond to their message directly. Do not break character.
 """
 
@@ -360,14 +362,72 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
         except Exception as e:
             print("Error parsing memory extraction:", e)
 
-def generate_echo(title: str, author: str, user_note: str) -> str:
+def check_desk_removal_intent(note: str) -> bool:
+    if not note:
+        return False
+        
+    note_lower = note.lower()
+    high_conf_keywords = [
+        "remove from my desk", "remove it from my desk", "remove from desk",
+        "remove this from my desk", "remove this book from my desk",
+        "take it off my desk", "take off my desk", "remove it", "remove book",
+        "stop reading", "don't think i'll continue", "not going to continue",
+        "won't continue", "dropped this book", "drop this book"
+    ]
+    if any(k in note_lower for k in high_conf_keywords):
+        return True
+
     prompt = f"""
-You are Liora, an AI reading companion. The user has just saved a review/note for the book "{title}" by {author}.
+You are a semantic analyzer for a digital bookshelf app.
+The user is updating their reading progress on a book and left a note.
+Determine if the user's note expresses a clear intent to stop reading this book, drop it, or remove it from their active reading desk.
+
+User Note: "{note}"
+
+Respond with ONLY "yes" or "no". Do not include any other text.
+"""
+    messages = [
+        {"role": "system", "content": "You are a precise intent classification utility."},
+        {"role": "user", "content": prompt}
+    ]
+    try:
+        response = Generation.call(
+            model='qwen-turbo',
+            messages=messages,
+            result_format='message'
+        )
+        if response.status_code == 200:
+            result = response.output.choices[0].message.content.strip().lower()
+            return "yes" in result
+    except Exception as e:
+        print("Error in check_desk_removal_intent:", e)
+    return False
+
+def generate_echo(db: Session, title: str, author: str, user_note: str) -> str:
+    # Query real global notes for this book from the database
+    global_notes = crud.get_global_notes_by_title(db, title, limit=5)
+    
+    if global_notes:
+        notes_text = "\n".join([f"- Sentiment: {n.sentiment}. Thought: \"{n.content}\"" for n in global_notes])
+        community_context = f"""Here are some anonymized thoughts from other readers who read "{title}":
+{notes_text}
+"""
+    else:
+        community_context = f"There are currently no other thoughts or reviews from other readers in the community for \"{title}\" yet."
+
+    prompt = f"""
+You are Liora, an emotionally intelligent AI reading companion. The user has just saved a review/note for the book "{title}" by {author}.
 Their note: "{user_note}"
 
-Your task is to generate an "Echo"—a 1-2 sentence observation comparing their thoughts to a simulated global reading community consensus.
-Make it sound insightful and slightly ethereal. For example: "Many readers also found the middle chapters slow, but your take on the protagonist's motives is quite unique."
-Keep it brief and directly address the user's specific points. Do not use quotes around your response.
+{community_context}
+
+Your task is to generate an "Echo"—a 1-2 sentence observation reflecting on their thoughts.
+
+CRITICAL RULES FOR COGNITION:
+- If there are thoughts from other readers in the community context, you may compare the user's thoughts with the community thoughts (e.g. "Some other readers also felt the pacing was slow, but your perspective is unique.").
+- If there are NO other readers' thoughts in the community context (no other thoughts in the database), you MUST NOT mention other readers, do not refer to "many readers", "the community", "others", "consensus", or "simulated community", and do not make up or hallucinate community opinions. Instead, reflect on the user's thoughts individually with warmth and insight, showing that you hear them.
+
+Make it sound insightful and slightly ethereal. Keep it brief and directly address the user's specific points. Do not use quotes around your response.
 """
     messages = [
         {"role": "system", "content": "You are Liora, an insightful AI reading companion."},

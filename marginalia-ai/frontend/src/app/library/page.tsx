@@ -333,7 +333,7 @@ export default function LibraryDashboard() {
       });
       if (res.ok) {
         const data = await res.json();
-        setActiveBooks(data.filter((b: Book) => b.status !== 'Read'));
+        setActiveBooks(data.filter((b: Book) => b.status !== 'Read' && b.status !== 'Dropped' && b.status !== 'Shelved'));
       }
     } catch (e) {
       console.error("Failed to fetch books", e);
@@ -368,13 +368,15 @@ export default function LibraryDashboard() {
     }
   };
 
-  const handleUpdateProgress = async (bookId: number, newPage: number, note: string) => {
+  const handleUpdateProgress = async (bookId: number, newPage: number, note: string, dropBook?: boolean) => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
       
       let newStatus = 'To Read';
-      if (newPage > 0) {
+      if (dropBook) {
+        newStatus = 'Dropped';
+      } else if (newPage > 0) {
         // If we know the total pages and we hit it, mark as Read. Otherwise, Currently Reading.
         if (selectedProgressBook && selectedProgressBook.total_pages > 0 && newPage >= selectedProgressBook.total_pages) {
           newStatus = 'Read';
@@ -846,9 +848,9 @@ export default function LibraryDashboard() {
         </nav>
 
         {/* Right Sidebar: Memory / Context Panel */}
-        <aside className="hidden xl:flex w-80 border-l border-white/5 p-6 flex-col gap-8 bg-[#0e0c0d]/60 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]">
-          <div>
-            <h3 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-5 flex items-center gap-2">
+        <aside className="hidden xl:flex w-80 h-full max-h-[100dvh] overflow-hidden border-l border-white/5 p-6 flex-col gap-6 bg-[#0e0c0d]/60 backdrop-blur-2xl shadow-[inset_1px_0_0_rgba(255,255,255,0.02)]">
+          <div className="flex-1 min-h-0 flex flex-col">
+            <h3 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-5 flex items-center gap-2 flex-shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-[#d4af37]/70">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
               </svg>
@@ -856,7 +858,7 @@ export default function LibraryDashboard() {
             </h3>
             
             {/* Ethereal Memories */}
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1.5 sidebar-scrollable-container">
               {memories.length === 0 ? (
                 <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 cursor-default">
                   <p className="text-[13px] text-[#e6dfd5]/40 font-serif italic text-center">Liora is observing you...</p>
@@ -878,7 +880,7 @@ export default function LibraryDashboard() {
             </div>
           </div>
 
-          <div className="mt-6">
+          <div className="flex-shrink-0 border-t border-white/5 pt-6">
             <h3 className="text-xs font-semibold text-[#e6dfd5]/40 uppercase tracking-wider mb-5 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 text-[#d4af37]/70">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
@@ -887,7 +889,7 @@ export default function LibraryDashboard() {
             </h3>
             {/* Living Book */}
             {activeBooks.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 max-h-[30vh] overflow-y-auto pr-1 sidebar-scrollable-container">
                 {activeBooks.map(book => (
                   <div 
                     key={book.id} 
