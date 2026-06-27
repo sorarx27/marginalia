@@ -52,3 +52,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.swp
+
+# Agent skills and walkthrough artifacts
+skills/
+.agents/
+walkthrough.md
+task.md
+implementation_plan.md
