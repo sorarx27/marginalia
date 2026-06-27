@@ -10,6 +10,7 @@ import BookSearchModal from "@/components/BookSearchModal";
 import BookProgressModal from "@/components/BookProgressModal";
 import RecommendationModal from "@/components/RecommendationModal";
 import EchoModal from "@/components/EchoModal";
+import AccountModal from "@/components/AccountModal";
 
 interface Message {
   id: string;
@@ -54,7 +55,7 @@ interface HistorySession {
 export default function LibraryDashboard() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [user, setUser] = useState<{username: string, email: string, taste_profile?: any} | null>(null);
+  const [user, setUser] = useState<{id: number, username: string, email: string | null, created_at: string, taste_profile?: any} | null>(null);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +70,7 @@ export default function LibraryDashboard() {
 
   // Chat History States
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [rawHistory, setRawHistory] = useState<RawHistoryMessage[]>([]);
   const [selectedSession, setSelectedSession] = useState<HistorySession | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
@@ -173,6 +175,28 @@ export default function LibraryDashboard() {
     }
   };
 
+  const fetchUserDetails = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/');
+      return;
+    }
+    try {
+      const res = await fetch('/api/users/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Auth failed');
+      const data = await res.json();
+      setUser(data);
+      if (!data.taste_profile || !data.taste_profile.favorite_genres) {
+        setNeedsOnboarding(true);
+      }
+      return data;
+    } catch (error) {
+      localStorage.removeItem('token');
+      router.push('/');
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -181,26 +205,11 @@ export default function LibraryDashboard() {
       return;
     }
     
-    // Fetch user details
-    fetch('/api/users/me', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => {
-      if (!res.ok) throw new Error('Auth failed');
-      return res.json();
-    })
-    .then(data => {
-      setUser(data);
-      if (!data.taste_profile || !data.taste_profile.favorite_genres) {
-        setNeedsOnboarding(true);
-      } else {
+    fetchUserDetails().then(data => {
+      if (data && data.taste_profile && data.taste_profile.favorite_genres) {
         triggerWelcomeBackGreeting();
       }
       setMounted(true);
-    })
-    .catch(() => {
-      localStorage.removeItem('token');
-      router.push('/');
     });
 
     fetchMemories();
@@ -663,7 +672,10 @@ export default function LibraryDashboard() {
           </nav>
 
           <div className="mt-auto">
-            <button className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-white/5 transition-colors text-left">
+            <button 
+              onClick={() => setIsAccountOpen(true)}
+              className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-white/5 transition-colors text-left"
+            >
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-xs uppercase">
                 {user?.username ? user.username[0] : 'U'}
               </div>
@@ -839,7 +851,10 @@ export default function LibraryDashboard() {
             </svg>
             <span className="text-[10px] font-medium">History</span>
           </button>
-          <button className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]">
+          <button 
+            onClick={() => setIsAccountOpen(true)}
+            className="flex flex-col items-center gap-1 text-[#e6dfd5]/50 hover:text-[#e6dfd5]"
+          >
             <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#d4af37] to-[#9d7e1c] flex items-center justify-center text-[#0e0c0d] font-bold text-[9px] uppercase">
               {user?.username ? user.username[0] : 'U'}
             </div>
@@ -1020,6 +1035,16 @@ export default function LibraryDashboard() {
         <EchoModal 
           echo={echoMessage} 
           onClose={() => setEchoMessage(null)} 
+        />
+      )}
+
+      {isAccountOpen && (
+        <AccountModal
+          isOpen={isAccountOpen}
+          onClose={() => setIsAccountOpen(false)}
+          user={user}
+          books={activeBooks}
+          onUpdateUser={fetchUserDetails}
         />
       )}
 

@@ -26,6 +26,20 @@ def create_user(db: Session, user: schemas.UserCreate):
     
     return db_user
 
+def update_user(db: Session, user_id: int, user_update: schemas.UserUpdate):
+    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if db_user:
+        update_data = user_update.model_dump(exclude_unset=True)
+        if "password" in update_data:
+            import auth
+            hashed = auth.get_password_hash(update_data.pop("password"))
+            db_user.hashed_password = hashed
+        for key, value in update_data.items():
+            setattr(db_user, key, value)
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
 # --- Book CRUD ---
 def get_books(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Book).filter(models.Book.owner_id == user_id).offset(skip).limit(limit).all()

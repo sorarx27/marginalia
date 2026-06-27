@@ -90,6 +90,20 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 def read_user_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+@app.put("/users/me", response_model=schemas.UserResponse)
+def update_user_me(user_update: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    if user_update.username and user_update.username != current_user.username:
+        existing = crud.get_user_by_username(db, username=user_update.username)
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already in use")
+            
+    if user_update.email and user_update.email != current_user.email:
+        existing = db.query(models.User).filter(models.User.email == user_update.email).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already registered")
+            
+    return crud.update_user(db=db, user_id=current_user.id, user_update=user_update)
+
 # --- Book Endpoints ---
 @app.post("/users/me/books/", response_model=schemas.BookResponse)
 def create_book_for_user(book: schemas.BookCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
