@@ -69,6 +69,14 @@ def update_book_progress(db: Session, book_id: int, user_id: int, book_update: s
         db.refresh(db_book)
     return db_book
 
+def delete_book(db: Session, book_id: int, user_id: int) -> bool:
+    db_book = db.query(models.Book).filter(models.Book.id == book_id, models.Book.owner_id == user_id).first()
+    if db_book:
+        db.delete(db_book)
+        db.commit()
+        return True
+    return False
+
 # --- Memory CRUD ---
 def get_memories(db: Session, user_id: int, skip: int = 0, limit: int = 100):
     return db.query(models.Memory).filter(models.Memory.user_id == user_id).order_by(models.Memory.timestamp.desc()).offset(skip).limit(limit).all()

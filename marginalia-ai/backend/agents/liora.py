@@ -42,17 +42,26 @@ Respond to their message directly. Do not break character.
 
 MEMORY_EXTRACTION_PROMPT = """
 You are a background cognitive processor for Liora, an AI reading companion.
-Your job is to read a recent message from the user and extract:
+Your job is to read a recent interaction (the User's message and Liora's reply) and extract key metadata to update the user's digital desk, memories, and taste profile.
+
+Input provided:
+- User's message (their latest input)
+- Liora's reply (Liora's response to that input)
+
+YOUR EXTRACTION TASKS:
 1. Any new, permanent facts, preferences, or reading habits they shared (as memories).
-2. Any books they explicitly mention having read in the past, or books they mention currently reading.
-3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste. Only do this if it's a brilliant match.
+2. Any books they explicitly mention having read, currently reading, wanting to add to their desk, or wanting to remove/drop from their desk.
+   - CRITICAL PRONOUN RESOLUTION: If the user says "add it", "put this on my desk", "take it off my desk", "remove it", or refers to a book using a pronoun/generic reference, use Liora's reply or the conversational context to resolve that pronoun to the specific book's 'title' and 'author'.
+   - Determine 'status' for each book as one of: "Read" (finished), "Currently Reading" (on desk), "To Read" (wishlist/backlog), or "Dropped" (stopped reading / removed from active desk).
+3. OCCASIONALLY, if the user expresses a very strong preference or opinion, you may provide ONE proactive book recommendation that perfectly matches their taste.
+   - CRITICAL LIMITATION: Set this to null/omit if the user is merely asking to add a book to their desk, or if Liora already recommended a book in her reply. Never generate a proactive recommendation if the interaction is already about a specific recommendation.
 4. ANY TIME the user shares an opinion on a book, extract subtle shifts in their taste profile across 5 axes (0-100 scale).
-5. IMPORTANT: If the user describes an exceptionally vivid, highly emotional, or "wow" moment from a book they are reading, generate an `image_prompt`. This prompt should vividly describe a beautiful, dream-like illustration of that scene or feeling to be rendered by a text-to-image model. ONLY do this for extremely vivid/wow moments, NOT mundane facts.
-6. NEW: If the user shares a clear opinion, review, or thought about a specific book, extract a `global_note`. This note MUST be completely anonymized (remove "I", "me", names, or personal identifiers). It should be a single, punchy insight about the book from "a reader" (e.g. "A reader found the pacing slow but the magic system incredibly detailed.").
+5. If the user describes an exceptionally vivid, highly emotional, or "wow" moment from a book they are reading, generate an `image_prompt`. This prompt should vividly describe a beautiful, dream-like illustration of that scene or feeling to be rendered by a text-to-image model. ONLY do this for extremely vivid/wow moments, NOT mundane facts.
+6. If the user shares a clear opinion, review, or thought about a specific book, extract a `global_note`. This note MUST be completely anonymized (remove "I", "me", names, or personal identifiers). It should be a single, punchy insight about the book from "a reader" (e.g. "A reader found the pacing slow but the magic system incredibly detailed.").
 
 Return the result as a JSON object with up to six keys: 'memories', 'books', 'proactive_recommendation', 'taste_shifts', 'image_prompt', and 'global_note'.
 - 'memories': An array of objects with 'memory_type' (e.g., 'preference', 'fact', 'dislike') and 'content'.
-- 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read" or "Currently Reading").
+- 'books': An array of objects with 'title', 'author', and 'status' (must be either "Read", "Currently Reading", "To Read", or "Dropped").
 - 'proactive_recommendation' (optional): An object with 'title', 'author', and 'note' (a personalized message from Liora explaining why she recommends it).
 - 'taste_shifts' (optional): An object with 5 keys ('complexity_score', 'worldbuilding_score', 'character_score', 'tone_score', 'pacing_score'). ONLY include the keys that the user's message directly influences. Values should be integers between 0 and 100 representing the user's PREFERRED state.
 - 'image_prompt' (optional): A string containing a highly detailed, descriptive prompt for generating an image of the vivid memory.
@@ -63,12 +72,8 @@ If there is nothing new to extract, return empty arrays. If no recommendation, s
 Example output:
 {
   "memories": [{"memory_type": "preference", "content": "Loves hard sci-fi with political intrigue."}],
-  "books": [],
-  "proactive_recommendation": {
-    "title": "The Expanse",
-    "author": "James S.A. Corey",
-    "note": "Based on your love for hard sci-fi and politics, I pulled this from the archives. I think you'll find the solar system dynamics fascinating."
-  },
+  "books": [{"title": "The Priory of the Orange Tree", "author": "Samantha Shannon", "status": "Currently Reading"}],
+  "proactive_recommendation": null,
   "taste_shifts": {
     "complexity_score": 80,
     "worldbuilding_score": 90
@@ -260,7 +265,7 @@ def extract_and_store_memory(db: Session, user_id: int, user_message: str, liora
             for b in extracted_books:
                 title = b.get('title')
                 author = b.get('author', '')
-                status = b.get('status', 'Read')
+                status = b.get('status', 'Currently Reading')
                 if title:
                     existing_book = crud.get_book_by_title_and_user(db, title, user_id)
                     if existing_book:

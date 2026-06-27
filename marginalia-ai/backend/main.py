@@ -139,6 +139,13 @@ def update_book_for_user(book_id: int, book_update: schemas.BookUpdate, backgrou
     response_data.echo = echo_msg
     return response_data
 
+@app.delete("/users/me/books/{book_id}")
+def delete_book_for_user(book_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    success = crud.delete_book(db=db, book_id=book_id, user_id=current_user.id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return {"detail": "Book deleted successfully"}
+
 @app.get("/books/search")
 def search_books_api(q: str, current_user: models.User = Depends(auth.get_current_user)):
     results = google_books.search_books(q)

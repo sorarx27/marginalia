@@ -20,20 +20,22 @@ interface BookProgressModalProps {
 export default function BookProgressModal({ book, onClose, onSave }: BookProgressModalProps) {
   const [page, setPage] = useState(book.current_page);
   const [note, setNote] = useState('');
-  const [dropBook, setDropBook] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
-    onSave(book.id, page, note, dropBook);
+    onSave(book.id, page, note, false);
   };
 
   const handleFinish = () => {
     setIsSaving(true);
-    // Passing -1 or page = total_pages to indicate finished
-    // Since page > 0 is checked in backend, we'll pass the maximum possible page, or 1000 if 0
     const finalPage = book.total_pages > 0 ? book.total_pages : 1000;
     onSave(book.id, finalPage, note, false);
+  };
+
+  const handleArchive = () => {
+    setIsSaving(true);
+    onSave(book.id, page, note, true);
   };
 
   return (
@@ -125,19 +127,6 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
             />
           </div>
 
-          {/* Remove book from desk toggle */}
-          <div className="flex items-center gap-3 bg-[#0e0c0d]/30 border border-white/5 rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-all" onClick={() => setDropBook(!dropBook)}>
-            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${dropBook ? 'border-[#d4af37] bg-[#d4af37]/10 text-[#d4af37]' : 'border-white/20 text-transparent'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-serif text-[#f3efe0] font-medium">Remove book from my desk</span>
-              <span className="text-[10px] text-[#e6dfd5]/40 font-serif">Stop reading this book for now and shelf it</span>
-            </div>
-          </div>
-
           <div className="flex flex-col gap-3 mt-2">
             <div className="flex gap-3">
               <button 
@@ -154,16 +143,29 @@ export default function BookProgressModal({ book, onClose, onSave }: BookProgres
                 {isSaving ? 'Saving Checkpoint...' : 'Save Checkpoint'}
               </button>
             </div>
-            <button 
-              onClick={handleFinish}
-              disabled={isSaving}
-              className="w-full py-3 rounded-xl border border-[#d4af37]/30 text-[#d4af37] font-semibold text-sm hover:bg-[#d4af37]/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-              </svg>
-              Mark as Finished
-            </button>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={handleArchive}
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/10 font-semibold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 .937-.522.421-.884-1.203-.842-2.735-1.366-4.371-1.366-2.125 0-4.043.886-5.429 2.313a5.978 5.978 0 0 1-5.429-2.313c-1.636 0-3.168.524-4.37 1.366-.517.362-.2.884.42 0H3.375Z" />
+                </svg>
+                Send to Archives
+              </button>
+              <button 
+                onClick={handleFinish}
+                disabled={isSaving}
+                className="flex-1 py-3 rounded-xl border border-[#d4af37]/30 text-[#d4af37] font-semibold text-sm hover:bg-[#d4af37]/10 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                </svg>
+                Mark as Finished
+              </button>
+            </div>
           </div>
 
         </div>
