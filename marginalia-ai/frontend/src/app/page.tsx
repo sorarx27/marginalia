@@ -12,12 +12,14 @@ export default function Home() {
   const router = useRouter();
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
 
   const handleEnterLibrary = () => {
     const token = localStorage.getItem('token');
     if (token) {
       setIsTransitioning(true);
     } else {
+      setAuthModalMode('login');
       setIsAuthModalOpen(true);
     }
   };
@@ -37,13 +39,19 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4 sm:gap-6">
           <button 
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={() => {
+              setAuthModalMode('login');
+              setIsAuthModalOpen(true);
+            }}
             className="text-xs md:text-sm font-medium text-[#e6dfd5]/70 hover:text-[#f3efe0] transition-colors duration-200"
           >
             Log In
           </button>
           <button 
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={() => {
+              setAuthModalMode('signup');
+              setIsAuthModalOpen(true);
+            }}
             className="text-xs md:text-sm font-medium px-4 py-2 rounded-lg border border-[#d4af37]/30 hover:border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/5 transition-all duration-300"
           >
             Sign Up
@@ -144,6 +152,7 @@ export default function Home() {
 
       <AuthModal 
         isOpen={isAuthModalOpen} 
+        initialMode={authModalMode}
         onClose={() => setIsAuthModalOpen(false)} 
         onSuccess={() => {
           setIsAuthModalOpen(false);
