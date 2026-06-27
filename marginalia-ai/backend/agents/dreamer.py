@@ -19,7 +19,7 @@ RULES:
 Return ONLY the raw JSON array. No markdown blocks, no other text."""
 
 def trigger_dream(db: Session, user_id: int):
-    # Fetch all memories (up to a reasonable bound for hackathon, e.g. 1000)
+    # Fetch all memories up to a limit of 1000 to prevent oversized contexts
     memories = crud.get_memories(db, user_id=user_id, limit=1000)
     if not memories:
         return {"status": "No memories to consolidate."}
